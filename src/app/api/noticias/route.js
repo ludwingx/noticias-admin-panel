@@ -29,8 +29,40 @@ export async function GET() {
     );
   }
 }
+// PUT: Aprobar o rechazar noticia
+export async function PUT(request) {
+  try {
+    const body = await request.json();
+    const { id, estado } = body;
 
-// ✅ SOLO UNA función PUT
+    if (!id || !estado) {
+      return new Response(
+        JSON.stringify({ error: "Faltan campos: 'id' o 'estado'" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const noticiaActualizada = await prisma.news.update({
+      where: { id: Number(id) },
+      data: { estado },
+    });
+
+    return new Response(JSON.stringify(noticiaActualizada), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Error al actualizar noticia' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+// PUT: Aprobar o rechazar noticia
 export async function PUT(request) {
   try {
     const body = await request.json();
