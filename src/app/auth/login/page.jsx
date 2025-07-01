@@ -39,7 +39,7 @@ function LoginPage() {
           <p className="bg-red-500 text-lg text-white p-3 rounded mb-2">{error}</p>
         )}
 
-        <h1 className="text-slate-200 font-bold text-4xl mb-4">Login</h1>
+        <h1 className="text-slate-200 font-bold text-4xl mb-4">Iniciar Sesión</h1>
 
         <label htmlFor="email" className="text-slate-500 mb-2 block text-sm">
           Email:
