@@ -1,0 +1,53 @@
+enum Rol {
+  ADMINISTRADOR
+  LECTOR
+}
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoArticulo {
+  SIN_TRABAJAR
+  EN_PROCESO
+  PROCESADO
+  DESCARTADO
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  role      Rol      @default(LECTOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model News {
+  id                Int      @id @default(autoincrement())
+  titulo            String
+  autor             String?
+  fecha_publicacion DateTime?
+  imagen            String?
+  resumen           String?
+  contenido         String?
+  fuente            String?
+  url               String?
+  resumen_ia        String?
+  estado            String   @default("PENDIENTE")
+  art               Int?
+  created_at        DateTime @default(now())
+  
+}
+
+model ArticuloBruto {
+  id        Int             @id @default(autoincrement())
+  url       String          @unique
+  estado    EstadoArticulo @default(SIN_TRABAJAR)
+  creado    DateTime        @default(now())
+}
