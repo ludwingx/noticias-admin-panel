@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { FiDownload } from "react-icons/fi";
+import { FaFilePdf } from "react-icons/fa6";
 
 export default function HomePage() {
   const [noticias, setNoticias] = useState([]);
@@ -9,6 +11,10 @@ export default function HomePage() {
 
   // Guardamos estados de aprobación en un objeto { [id]: "aprobado" | "rechazado" }
   const [estados, setEstados] = useState({});
+
+  // Estado para botón de generación
+  const [generando, setGenerando] = useState(false);
+  const [errorGen, setErrorGen] = useState(null);
 
   useEffect(() => {
     async function fetchNoticias() {
@@ -39,7 +45,6 @@ export default function HomePage() {
       const data = await res.json();
       console.log("Noticia actualizada:", data);
 
-      // Actualizar estado local solo si backend fue exitoso
       setEstados((prev) => ({
         ...prev,
         [id]: nuevoEstado,
@@ -47,6 +52,54 @@ export default function HomePage() {
     } catch (error) {
       console.error(error);
       alert("No se pudo actualizar el estado de la noticia.");
+    }
+  }
+
+  async function generarBoletin() {
+    setGenerando(true);
+    setErrorGen(null);
+
+    try {
+      const response = await fetch(
+        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook-test/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        }
+      );
+
+      if (!response.ok) throw new Error("Error al generar boletín");
+
+      const data = await response.json();
+      console.log("Respuesta JSON recibida:", data);
+
+      // Extraer la URL del PDF
+      const downloadUrl = data?.[0]?.document_card?.download_url;
+
+      if (!downloadUrl) {
+        throw new Error("No se recibió URL de descarga del PDF");
+      }
+
+      // Abrir PDF en nueva pestaña (para ver o descargar)
+      window.open(downloadUrl, "_blank");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "boletin-noticias.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      setErrorGen(error.message);
+    } finally {
+      setGenerando(false);
     }
   }
 
@@ -69,11 +122,32 @@ export default function HomePage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-10 bg-white">
-      <h1 className="text-3xl font-bold mb-6">Noticias recientes</h1>
+      <h1 className="text-3xl font-bold mb-6 flex items-center justify-between">
+        Noticias recientes
+        <button
+          onClick={generarBoletin}
+          disabled={generando}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          title="Generar y descargar Boletín de noticias"
+        >
+          {generando ? (
+            "Generando..."
+          ) : (
+            <>
+              <FaFilePdf />
+              Descargar Boletín
+              <FiDownload />
+            </>
+          )}
+        </button>
+      </h1>
+
+      {errorGen && <p className="text-red-500 mb-4">{errorGen}</p>}
 
       <div className="grid gap-6">
         {noticias.map((noticia) => {
-          const estadoActual = estados[noticia.id] || noticia.estado?.toLowerCase() || null;
+          const estadoActual =
+            estados[noticia.id] || noticia.estado?.toLowerCase() || null;
 
           return (
             <article

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { CiLogout } from "react-icons/ci";
+import { AiOutlineHome, AiOutlineLogin, AiOutlineUserAdd } from "react-icons/ai";
+import { MdOutlineArticle } from "react-icons/md";
 
 async function Navbar() {
   const session = await getServerSession(authOptions);
@@ -13,39 +16,39 @@ async function Navbar() {
         <img
           src="https://i.ibb.co/BVtY6hmb/image-4.png"
           alt="Tuto Quiroga & Libre, logo"
-          width={140}
-          height={30}
+          width={250}  // más grande
+          height={40}  // más alto
           className="cursor-pointer"
           loading="eager"
         />
       </Link>
 
       {/* Menu links */}
-      <ul className="flex gap-6 text-gray-900 font-semibold text-lg">
+      <ul className="flex gap-6 text-gray-900 font-semibold text-lg items-center">
         {!session?.user ? (
           <>
             <li>
               <Link
                 href="/"
-                className="hover:text-[#1a3680] transition-colors duration-200"
+                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
               >
-                Home
+                <AiOutlineHome size={20} /> Home
               </Link>
             </li>
             <li>
               <Link
                 href="/auth/login"
-                className="hover:text-[#1a3680] transition-colors duration-200"
+                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
               >
-                Login
+                <AiOutlineLogin size={20} /> Login
               </Link>
             </li>
             <li>
               <Link
                 href="/auth/register"
-                className="hover:text-[#1a3680] transition-colors duration-200"
+                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
               >
-                Register
+                <AiOutlineUserAdd size={20} /> Register
               </Link>
             </li>
           </>
@@ -54,17 +57,17 @@ async function Navbar() {
             <li>
               <Link
                 href="/dashboard"
-                className="hover:text-[#1a3680] transition-colors duration-200"
+                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
               >
-                Noticias
+                <MdOutlineArticle size={20} /> Noticias
               </Link>
             </li>
             <li>
               <Link
                 href="/api/auth/signout"
-                className="hover:text-[#1a3680] transition-colors duration-200"
+                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
               >
-                Cerrar sesión
+                Cerrar sesión <CiLogout size={20} />
               </Link>
             </li>
           </>

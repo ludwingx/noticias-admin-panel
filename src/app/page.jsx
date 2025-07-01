@@ -1,4 +1,13 @@
+"use client";
+
+import { useSession } from "next-auth/react";
+
 function HomePage() {
+  const { data: session, status } = useSession();
+
+  // Mientras carga la sesión, puedes mostrar algo (o null)
+  if (status === "loading") return null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-blue-50 to-white flex flex-col items-center justify-center px-6 py-20 font-sans text-gray-900">
       <main className="flex flex-col items-center text-center max-w-lg gap-8 w-full">
@@ -24,11 +33,11 @@ function HomePage() {
 
         {/* Call to action */}
         <a
-          href="/login"
+          href={session ? "/dashboard" : "/auth/login"}
           className="inline-block rounded-full bg-[#1a3680] px-10 py-3 text-white text-lg font-semibold shadow-md hover:bg-[#163065] focus:outline-none focus:ring-4 focus:ring-[#1a3680]/50 transition"
-          aria-label="Iniciar sesión"
+          aria-label={session ? "Ver noticias" : "Iniciar sesión"}
         >
-          Iniciar sesión
+          {session ? "Ver noticias" : "Iniciar sesión"}
         </a>
       </main>
 
@@ -36,7 +45,7 @@ function HomePage() {
         &copy; {new Date().getFullYear()} Intelexia Labs
       </footer>
     </div>
-  )
+  );
 }
 
-export default HomePage
+export default HomePage;
