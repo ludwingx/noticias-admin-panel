@@ -5,7 +5,7 @@ import Image from "next/image";
 import { FiDownload } from "react-icons/fi";
 import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
-
+import { MdCheckCircle, MdCancel } from "react-icons/md";
 export default function HomePage() {
   const [noticias, setNoticias] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -247,9 +247,9 @@ export default function HomePage() {
             "Generando..."
           ) : (
             <>
-              <FaFilePdf className="hidden sm:inline" />
+              <FaFilePdf />
               <span className="whitespace-nowrap">Descargar Boletín</span>
-              <FiDownload className="hidden sm:inline" />
+              <FiDownload />
             </>
           )}
         </button>
@@ -265,62 +265,66 @@ export default function HomePage() {
             null;
   
           return (
-            <article
-              key={noticia.id}
-              className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition"
-            >
-              <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                Publicado por <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
-                {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
-              </p>
-  
-              {noticia.imagen && (
-                <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
-                  <Image
-                    src={noticia.imagen}
-                    alt={noticia.titulo}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                </div>
-              )}
-  
-              <p className="text-sm sm:text-base text-gray-700">{noticia.resumen}</p>
-  
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  onClick={() => manejarEstado(noticia.id, "aprobado")}
-                  className={`px-4 py-2 rounded text-sm font-medium transition ${
-                    estadoActual === "aprobado"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-green-400"
-                  }`}
-                >
-                  Aprobar
-                </button>
-                <button
-                  onClick={() => manejarEstado(noticia.id, "rechazado")}
-                  className={`px-4 py-2 rounded text-sm font-medium transition ${
-                    estadoActual === "rechazado"
-                      ? "bg-red-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-red-400"
-                  }`}
-                >
-                  Rechazar
-                </button>
-              </div>
-  
-              <a
-                href={noticia.url || "#"}
-                className="inline-block mt-4 text-[#123488] hover:underline text-sm font-medium"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Leer más →
-              </a>
-            </article>
+<article
+  key={noticia.id}
+  className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
+>
+  <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
+  <p className="text-xs sm:text-sm text-gray-600 mb-2">
+    Publicado por <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
+    {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
+  </p>
+
+  {noticia.imagen && (
+    <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
+      <Image
+        src={noticia.imagen}
+        alt={noticia.titulo}
+        fill
+        className="object-cover"
+        unoptimized
+      />
+    </div>
+  )}
+
+  <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
+
+  {/* Footer de la card */}
+  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
+    <a
+      href={noticia.url || "#"}
+      className="text-[#123488] hover:underline text-sm font-medium"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Leer más →
+    </a>
+    <div className="flex gap-2">
+      <button
+        onClick={() => manejarEstado(noticia.id, "aprobado")}
+        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+          estadoActual === "aprobado"
+            ? "bg-green-600 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-green-400"
+        }`}
+      >
+        <MdCheckCircle className="text-lg" />
+        Aprobar
+      </button>
+      <button
+        onClick={() => manejarEstado(noticia.id, "rechazado")}
+        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+          estadoActual === "rechazado"
+            ? "bg-red-600 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-red-400"
+        }`}
+      >
+        <MdCancel className="text-lg" />
+        Rechazar
+      </button>
+    </div>
+  </div>
+</article>
           );
         })}
       </div>
