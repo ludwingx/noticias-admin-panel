@@ -58,35 +58,31 @@ export default function HomePage() {
   async function generarBoletin() {
     setGenerando(true);
     setErrorGen(null);
-
+  
     try {
       const response = await fetch(
         "https://n8n-torta-express.qnfmlx.easypanel.host/webhook-test/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         }
       );
-
+  
       if (!response.ok) throw new Error("Error al generar boletín");
-
+  
       const data = await response.json();
-      console.log("Respuesta JSON recibida:", data);
-
-      // Extraer la URL del PDF
-      const downloadUrl = data?.[0]?.document_card?.download_url;
-
-      if (!downloadUrl) {
-        throw new Error("No se recibió URL de descarga del PDF");
-      }
-
-      // Abrir PDF en nueva pestaña (para ver o descargar)
-      window.open(downloadUrl, "_blank");
-
-      const blob = await response.blob();
+      console.log("Datos recibidos del webhook:", data);
+  
+      // Extraer URL de descarga desde la respuesta
+      const urlPDF = data?.[0]?.document_card?.download_url;
+      if (!urlPDF) throw new Error("No se encontró URL de descarga del PDF");
+  
+      // Descargar el PDF desde la URL
+      const pdfResponse = await fetch(urlPDF);
+      if (!pdfResponse.ok) throw new Error("Error descargando PDF");
+  
+      const blob = await pdfResponse.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -95,6 +91,7 @@ export default function HomePage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+  
     } catch (error) {
       console.error(error);
       setErrorGen(error.message);
@@ -102,6 +99,7 @@ export default function HomePage() {
       setGenerando(false);
     }
   }
+  
 
   if (loading) {
     return (
