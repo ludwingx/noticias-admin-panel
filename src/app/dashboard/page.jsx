@@ -71,27 +71,43 @@ export default function HomePage() {
   
       if (!response.ok) throw new Error("Error al generar boletín");
   
-      const data = await response.json();
-      console.log("Datos recibidos del webhook:", data);
+      const contentType = response.headers.get("content-type") || "";
   
-      // Extraer URL de descarga desde la respuesta
-      const urlPDF = data?.[0]?.document_card?.download_url;
-      if (!urlPDF) throw new Error("No se encontró URL de descarga del PDF");
+      if (contentType.includes("application/pdf")) {
+        // Respuesta es un PDF binario directo
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "boletin-noticias.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else if (contentType.includes("application/json")) {
+        // Respuesta es JSON, con la URL del PDF
+        const data = await response.json();
+        console.log("Datos recibidos del webhook (JSON):", data);
   
-      // Descargar el PDF desde la URL
-      const pdfResponse = await fetch(urlPDF);
-      if (!pdfResponse.ok) throw new Error("Error descargando PDF");
+        const urlPDF = data?.[0]?.document_card?.download_url;
+        if (!urlPDF) throw new Error("No se encontró URL de descarga del PDF");
   
-      const blob = await pdfResponse.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "boletin-noticias.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+        // Descargar archivo PDF desde la URL
+        const pdfResponse = await fetch(urlPDF);
+        if (!pdfResponse.ok) throw new Error("Error descargando PDF");
   
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "boletin-noticias.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        throw new Error(`Tipo de contenido inesperado: ${contentType}`);
+      }
     } catch (error) {
       console.error(error);
       setErrorGen(error.message);
@@ -99,6 +115,7 @@ export default function HomePage() {
       setGenerando(false);
     }
   }
+  
   
 
   if (loading) {
