@@ -6,12 +6,15 @@ import { FiDownload } from "react-icons/fi";
 import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
 import { MdCheckCircle, MdCancel } from "react-icons/md";
+
 export default function HomePage() {
   const [noticias, setNoticias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [estados, setEstados] = useState({});
   const [generando, setGenerando] = useState(false);
   const [errorGen, setErrorGen] = useState(null);
+  const [ejecutandoWebhook, setEjecutandoWebhook] = useState(false);
+  const [webhookError, setWebhookError] = useState(null);
 
   useEffect(() => {
     async function fetchNoticias() {
@@ -23,6 +26,26 @@ export default function HomePage() {
     }
     fetchNoticias();
   }, []);
+
+  async function ejecutarWebhook() {
+    setEjecutandoWebhook(true);
+    setWebhookError(null);
+    try {
+      const res = await fetch(
+        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
+        {
+          method: "POST",
+        }
+      );
+      if (!res.ok) throw new Error("Error al ejecutar el webhook");
+      alert("✅ Flujo ejecutado correctamente");
+    } catch (err) {
+      console.error(err);
+      setWebhookError("Error al ejecutar el flujo de N8N.");
+    } finally {
+      setEjecutandoWebhook(false);
+    }
+  }
 
   async function manejarEstado(id, nuevoEstado) {
     try {
@@ -63,35 +86,33 @@ export default function HomePage() {
   async function generarBoletin() {
     setGenerando(true);
     setErrorGen(null);
-  
+
     try {
-      // Primero traemos las noticias actualizadas desde la BDD para evitar inconsistencias
       const res = await fetch("/api/noticias");
       if (!res.ok) throw new Error("Error al obtener noticias desde la base de datos");
       const data = await res.json();
-  
-      // Filtramos solo las noticias aprobadas según la base de datos (estado = "aprobado")
+
       const noticiasAprobadas = data.filter(
         (n) => n.estado?.toLowerCase() === "aprobado"
       );
-  
+
       if (noticiasAprobadas.length === 0) {
         setErrorGen("No hay noticias aprobadas para generar el boletín.");
         setGenerando(false);
         return;
       }
-  
+
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 40;
       let y = margin;
-  
+
       const logoUrl = "https://i.ibb.co/BVtY6hmb/image-4.png";
       const logoHeight = 70;
       const logoWidth = 370;
       const logoBase64 = await getBase64ImageFromUrl(logoUrl);
-  
+
       if (logoBase64) {
         doc.addImage(
           logoBase64,
@@ -103,43 +124,43 @@ export default function HomePage() {
         );
       }
       y += logoHeight + 24;
-  
+
       const fechaHora = new Date().toLocaleString("es-ES", {
         dateStyle: "full",
         timeStyle: "short",
       });
-  
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.setTextColor("#12358d");
       doc.text(`Boletín ${fechaHora}`, pageWidth / 2, y, { align: "center" });
-  
+
       y += 18;
-  
+
       doc.setFont("helvetica", "normal");
       doc.setFontSize(12);
       doc.setTextColor("#000000");
       doc.text(fechaHora, pageWidth / 2, y, { align: "center" });
-  
+
       y += 30;
-  
+
       for (let i = 0; i < noticiasAprobadas.length; i++) {
         const noticia = noticiasAprobadas[i];
         if (y > pageHeight - margin - 260) {
           doc.addPage();
           y = margin;
         }
-  
+
         const boxWidth = pageWidth - margin * 2;
         const boxHeight = 260;
         doc.setDrawColor("#e0e0e0");
         doc.setFillColor("#ffffff");
         doc.setLineWidth(1);
         doc.roundedRect(margin, y, boxWidth, boxHeight, 6, 6, "FD");
-  
+
         const padding = 15;
         let cursorY = y + padding;
-  
+
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor("#000000");
@@ -147,14 +168,14 @@ export default function HomePage() {
         const metaText = `${fechaPub} | Autor: ${noticia.autor || "Desconocido"}`;
         doc.text(metaText, margin + padding, cursorY);
         cursorY += 18;
-  
+
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
         doc.setTextColor("#12358d");
         const titleLines = doc.splitTextToSize(noticia.titulo, boxWidth - padding * 2);
         doc.text(titleLines, margin + padding, cursorY);
         cursorY += titleLines.length * 18;
-  
+
         if (noticia.imagen) {
           const imgData = await getBase64ImageFromUrl(noticia.imagen);
           if (imgData) {
@@ -175,22 +196,21 @@ export default function HomePage() {
             cursorY += imgHeight + 10;
           }
         }
-  
+
         doc.setFont("helvetica", "italic");
         doc.setFontSize(11);
         doc.setTextColor("#000000");
         const resumenLines = doc.splitTextToSize(noticia.resumen || "", boxWidth - padding * 2);
         doc.text(resumenLines, margin + padding, cursorY);
         cursorY += resumenLines.length * 16;
-  
+
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
         doc.setTextColor("#da0b0a");
-        const linkText = "Leer más";
-        doc.textWithLink(linkText, margin + padding, cursorY, {
+        doc.textWithLink("Leer más", margin + padding, cursorY, {
           url: noticia.url || "#",
         });
-  
+
         y += boxHeight + 15;
         if (i !== noticiasAprobadas.length - 1) {
           doc.setDrawColor("#cccccc");
@@ -205,7 +225,7 @@ export default function HomePage() {
           y += 15;
         }
       }
-  
+
       doc.save("boletin-noticias.pdf");
     } catch (e) {
       console.error(e);
@@ -214,7 +234,6 @@ export default function HomePage() {
       setGenerando(false);
     }
   }
-  
 
   if (loading) {
     return (
@@ -237,98 +256,106 @@ export default function HomePage() {
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 bg-white">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <span>Noticias recientes</span>
-        <button
-          onClick={generarBoletin}
-          disabled={generando}
-          className="flex items-center justify-center gap-2 bg-[#123488] text-white px-4 py-2 rounded-md hover:bg-[#0f2c6b] disabled:opacity-50 transition text-sm sm:text-base"
-          title="Generar y descargar Boletín de noticias"
-        >
-          {generando ? (
-            "Generando..."
-          ) : (
-            <>
-              <FaFilePdf />
-              <span className="whitespace-nowrap">Descargar Boletín</span>
-              <FiDownload />
-            </>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={generarBoletin}
+            disabled={generando}
+            className="flex items-center justify-center gap-2 bg-[#123488] text-white px-4 py-2 rounded-md hover:bg-[#0f2c6b] disabled:opacity-50 transition text-sm sm:text-base"
+          >
+            {generando ? (
+              "Generando..."
+            ) : (
+              <>
+                <FaFilePdf />
+                <span className="whitespace-nowrap">Descargar Boletín</span>
+                <FiDownload />
+              </>
+            )}
+          </button>
+          <button
+            onClick={ejecutarWebhook}
+            disabled={ejecutandoWebhook}
+            className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition text-sm sm:text-base"
+          >
+            {ejecutandoWebhook ? "Ejecutando..." : "Cargar Noticias"}
+          </button>
+        </div>
       </h1>
-  
-      {errorGen && <p className="text-red-500 mb-4">{errorGen}</p>}
-  
+
+      {errorGen && <p className="text-red-600 mb-4">{errorGen}</p>}
+      {webhookError && <p className="text-red-600 mb-4">{webhookError}</p>}
+
       <div className="grid gap-6">
         {noticias.map((noticia) => {
           const estadoActual =
             estados[noticia.id]?.toLowerCase() ||
             noticia.estado?.toLowerCase() ||
             null;
-  
+
           return (
-<article
-  key={noticia.id}
-  className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
->
-  <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
-  <p className="text-xs sm:text-sm text-gray-600 mb-2">
-    Publicado por <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
-    {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
-  </p>
+            <article
+              key={noticia.id}
+              className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
+            >
+              <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                Publicado por{" "}
+                <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
+                {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
+              </p>
 
-  {noticia.imagen && (
-    <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
-      <Image
-        src={noticia.imagen}
-        alt={noticia.titulo}
-        fill
-        className="object-cover"
-        unoptimized
-      />
-    </div>
-  )}
+              {noticia.imagen && (
+                <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
+                  <Image
+                    src={noticia.imagen}
+                    alt={noticia.titulo}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
 
-  <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
+              <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
 
-  {/* Footer de la card */}
-  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
-    <a
-      href={noticia.url || "#"}
-      className="text-[#123488] hover:underline text-sm font-medium"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Leer más →
-    </a>
-    <div className="flex gap-2">
-      <button
-        onClick={() => manejarEstado(noticia.id, "aprobado")}
-        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-          estadoActual === "aprobado"
-            ? "bg-green-600 text-white"
-            : "bg-gray-200 text-gray-700 hover:bg-green-400"
-        }`}
-      >
-        <MdCheckCircle className="text-lg" />
-        Aprobar
-      </button>
-      <button
-        onClick={() => manejarEstado(noticia.id, "rechazado")}
-        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-          estadoActual === "rechazado"
-            ? "bg-red-600 text-white"
-            : "bg-gray-200 text-gray-700 hover:bg-red-400"
-        }`}
-      >
-        <MdCancel className="text-lg" />
-        Rechazar
-      </button>
-    </div>
-  </div>
-</article>
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
+                <a
+                  href={noticia.url || "#"}
+                  className="text-[#123488] hover:underline text-sm font-medium"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Leer más →
+                </a>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => manejarEstado(noticia.id, "aprobado")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                      estadoActual === "aprobado"
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-green-400"
+                    }`}
+                  >
+                    <MdCheckCircle className="text-lg" />
+                    Aprobar
+                  </button>
+                  <button
+                    onClick={() => manejarEstado(noticia.id, "rechazado")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                      estadoActual === "rechazado"
+                        ? "bg-red-600 text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-red-400"
+                    }`}
+                  >
+                    <MdCancel className="text-lg" />
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            </article>
           );
         })}
       </div>
     </main>
   );
-  
 }

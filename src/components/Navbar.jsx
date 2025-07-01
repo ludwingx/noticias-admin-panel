@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { CiLogout } from "react-icons/ci";
-import { AiOutlineHome, AiOutlineLogin, AiOutlineUserAdd } from "react-icons/ai";
-import { MdOutlineArticle } from "react-icons/md";
+import { AiOutlineLogin, AiOutlineUserAdd } from "react-icons/ai";
 import SignOutButton from "./SignOutButton";
 
 export default async function Navbar() {
@@ -26,108 +24,69 @@ export default async function Navbar() {
         </Link>
 
         {/* Desktop menu */}
-       <ul className="hidden md:flex gap-6 text-[#123488] font-semibold text-base items-center">
-  {!session?.user ? (
-    <>
-      <li>
-        <Link
-          href="/auth/login"
-          className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
-        >
-          <AiOutlineLogin size={20} />
-          Iniciar sesión
-        </Link>
-      </li>
-      <li>
-        <Link
-          href="/auth/register"
-          className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
-        >
-          <AiOutlineUserAdd size={20} />
-          Registrarse
-        </Link>
-      </li>
-    </>
-  ) : (
-    <>
-      <li>
-        <Link
-          href="/"
-          className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
-        >
-          <AiOutlineHome size={20} />
-          Inicio
-        </Link>
-      </li>
-      <li>
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
-        >
-          <MdOutlineArticle size={20} />
-          Noticias
-        </Link>
-      </li>
-      <li>
-        <SignOutButton />
-      </li>
-    </>
-  )}
-</ul>
-<details className="md:hidden relative group">
-  <summary className="cursor-pointer text-[#123488] font-semibold text-sm">
-    ☰ Menú
-  </summary>
-  <ul className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-2 text-sm">
-    {!session?.user ? (
-      <>
-        <li>
-          <Link
-            href="/auth/login"
-            className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
-          >
-            <AiOutlineLogin className="inline mr-1" />
-            Iniciar sesión
-          </Link>
-        </li>
-        <li>
-          <Link
-            href="/auth/register"
-            className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
-          >
-            <AiOutlineUserAdd className="inline mr-1" />
-            Registrarse
-          </Link>
-        </li>
-      </>
-    ) : (
-      <>
-        <li>
-          <Link
-            href="/"
-            className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
-          >
-            <AiOutlineHome className="inline mr-1" />
-            Inicio
-          </Link>
-        </li>
-        <li>
-          <Link
-            href="/dashboard"
-            className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
-          >
-            <MdOutlineArticle className="inline mr-1" />
-            Noticias
-          </Link>
-        </li>
-        <li className="px-4 py-2">
-          <SignOutButton />
-        </li>
-      </>
-    )}
-  </ul>
-</details>
+        <ul className="hidden md:flex gap-6 text-[#123488] font-semibold text-base items-center">
+          {!session?.user ? (
+            <>
+              <li>
+                <Link
+                  href="/auth/login"
+                  className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
+                >
+                  <AiOutlineLogin size={20} />
+                  Iniciar sesión
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/auth/register"
+                  className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
+                >
+                  <AiOutlineUserAdd size={20} />
+                  Registrarse
+                </Link>
+              </li>
+            </>
+          ) : (
+            <li>
+              <SignOutButton />
+            </li>
+          )}
+        </ul>
 
+        {/* Mobile menu */}
+        <details className="md:hidden relative group">
+          <summary className="cursor-pointer text-[#123488] font-semibold text-sm">
+            ☰ Menú
+          </summary>
+          <ul className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-2 text-sm">
+            {!session?.user ? (
+              <>
+                <li>
+                  <Link
+                    href="/auth/login"
+                    className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
+                  >
+                    <AiOutlineLogin className="inline mr-1" />
+                    Iniciar sesión
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/auth/register"
+                    className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
+                  >
+                    <AiOutlineUserAdd className="inline mr-1" />
+                    Registrarse
+                  </Link>
+                </li>
+              </>
+            ) : (
+              <li className="px-4 py-2">
+                <SignOutButton />
+              </li>
+            )}
+          </ul>
+        </details>
       </div>
     </nav>
   );
