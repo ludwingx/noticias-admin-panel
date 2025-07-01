@@ -29,38 +29,6 @@ export async function GET() {
     );
   }
 }
-// PUT: Aprobar o rechazar noticia
-export async function PUT(request) {
-  try {
-    const body = await request.json();
-    const { id, estado } = body;
-
-    if (!id || !estado) {
-      return new Response(
-        JSON.stringify({ error: "Faltan campos: 'id' o 'estado'" }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const noticiaActualizada = await prisma.news.update({
-      where: { id: Number(id) },
-      data: { estado },
-    });
-
-    return new Response(JSON.stringify(noticiaActualizada), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch {
-    return new Response(
-      JSON.stringify({ error: 'Error al actualizar noticia' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  }
-}
 
 // PUT: Aprobar o rechazar noticia
 export async function PUT(request) {
@@ -84,9 +52,9 @@ export async function PUT(request) {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch {
+  } catch (error) {
     return new Response(
-      JSON.stringify({ error: 'Error al actualizar noticia' }),
+      JSON.stringify({ error: 'Error al actualizar noticia', detail: error.message }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
