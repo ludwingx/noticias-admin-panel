@@ -4,77 +4,132 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { CiLogout } from "react-icons/ci";
 import { AiOutlineHome, AiOutlineLogin, AiOutlineUserAdd } from "react-icons/ai";
 import { MdOutlineArticle } from "react-icons/md";
+import SignOutButton from "./SignOutButton";
 
-async function Navbar() {
+export default async function Navbar() {
   const session = await getServerSession(authOptions);
-  console.log(session);
 
   return (
-    <nav className="flex justify-between items-center bg-gradient-to-r from-white via-blue-50 to-white px-6 md:px-24 py-4 shadow-sm">
-      {/* Logo */}
-      <Link href="/">
-        <img
-          src="https://i.ibb.co/BVtY6hmb/image-4.png"
-          alt="Tuto Quiroga & Libre, logo"
-          width={250}  // más grande
-          height={40}  // más alto
-          className="cursor-pointer"
-          loading="eager"
-        />
-      </Link>
+    <nav className="bg-gradient-to-r from-white via-blue-50 to-white shadow-md sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 flex justify-between items-center">
+        {/* Logo */}
+        <Link href="/" className="flex-shrink-0">
+          <img
+            src="https://i.ibb.co/BVtY6hmb/image-4.png"
+            alt="Tuto Quiroga & Libre, logo"
+            width={180}
+            height={40}
+            className="cursor-pointer select-none"
+            loading="eager"
+            draggable={false}
+          />
+        </Link>
 
-      {/* Menu links */}
-      <ul className="flex gap-6 text-gray-900 font-semibold text-lg items-center">
-        {!session?.user ? (
-          <>
-            <li>
-              <Link
-                href="/"
-                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
-              >
-                <AiOutlineHome size={20} /> Home
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/auth/login"
-                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
-              >
-                <AiOutlineLogin size={20} /> Login
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/auth/register"
-                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
-              >
-                <AiOutlineUserAdd size={20} /> Register
-              </Link>
-            </li>
-          </>
-        ) : (
-          <>
-            <li>
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
-              >
-                <MdOutlineArticle size={20} /> Noticias
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/api/auth/signout"
-                className="flex items-center gap-1 hover:text-[#1a3680] transition-colors duration-200"
-              >
-                Cerrar sesión <CiLogout size={20} />
-              </Link>
-            </li>
-          </>
-        )}
-      </ul>
+        {/* Desktop menu */}
+        <ul className="hidden md:flex gap-6 text-[#123488] font-semibold text-base items-center">
+          {!session?.user ? (
+            <>
+              <li>
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
+                >
+                  <AiOutlineHome size={20} />
+                  Inicio
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/auth/login"
+                  className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
+                >
+                  <AiOutlineLogin size={20} />
+                  Iniciar sesión
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/auth/register"
+                  className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
+                >
+                  <AiOutlineUserAdd size={20} />
+                  Registrarse
+                </Link>
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 hover:text-[#da0b0a] transition-colors"
+                >
+                  <MdOutlineArticle size={20} />
+                  Noticias
+                </Link>
+              </li>
+              <li>
+                <SignOutButton />
+              </li>
+            </>
+          )}
+        </ul>
+
+        {/* Mobile menu */}
+        <details className="md:hidden relative group">
+          <summary className="cursor-pointer text-[#123488] font-semibold text-sm">
+            ☰ Menú
+          </summary>
+          <ul className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-2 text-sm">
+            {!session?.user ? (
+              <>
+                <li>
+                  <Link
+                    href="/"
+                    className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
+                  >
+                    <AiOutlineHome className="inline mr-1" />
+                    Inicio
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/auth/login"
+                    className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
+                  >
+                    <AiOutlineLogin className="inline mr-1" />
+                    Iniciar sesión
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/auth/register"
+                    className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
+                  >
+                    <AiOutlineUserAdd className="inline mr-1" />
+                    Registrarse
+                  </Link>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <Link
+                    href="/dashboard"
+                    className="block px-4 py-2 hover:bg-gray-100 text-[#123488]"
+                  >
+                    <MdOutlineArticle className="inline mr-1" />
+                    Noticias
+                  </Link>
+                </li>
+                <li className="px-4 py-2">
+                  <SignOutButton />
+                </li>
+              </>
+            )}
+          </ul>
+        </details>
+      </div>
     </nav>
   );
 }
-
-export default Navbar;
