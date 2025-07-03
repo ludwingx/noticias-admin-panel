@@ -327,17 +327,18 @@ export default function HomePage() {
 
   // Modal de espera
   function ModalEspera() {
+    const [dots, setDots] = useState('');
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDots((prev) => (prev.length < 3 ? prev + '.' : ''));
+      }, 500);
+      return () => clearInterval(interval);
+    }, []);
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
         <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center min-w-[300px]">
-          <span className="text-lg font-semibold mb-2">{waiting ? "Buscando noticias..." : "Procesando..."}</span>
-          <span className="text-4xl font-bold text-blue-700 mb-4">{timer}s</span>
-          {intentosSinNoticias === 2 && (
-            <span className="text-yellow-600 mb-2">Puede que esto tome un poco más de tiempo</span>
-          )}
-          {intentosSinNoticias >= 3 && (
-            <span className="text-red-600 mb-2">Puede que no se hayan encontrado noticias nuevas</span>
-          )}
+          <span className="text-lg font-semibold mb-2">Buscando noticias{dots}</span>
           {noNews && (
             <>
               <span className="text-red-600 mb-4">No se encontraron noticias</span>
