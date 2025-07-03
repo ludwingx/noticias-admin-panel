@@ -36,6 +36,7 @@ export default async function Navbar() {
                   Iniciar sesión
                 </Link>
               </li>
+              {/*
               <li>
                 <Link
                   href="/auth/register"
@@ -45,6 +46,7 @@ export default async function Navbar() {
                   Registrarse
                 </Link>
               </li>
+              */}
             </>
           ) : (
             <li>
@@ -70,6 +72,7 @@ export default async function Navbar() {
                     Iniciar sesión
                   </Link>
                 </li>
+                {/*
                 <li>
                   <Link
                     href="/auth/register"
@@ -79,6 +82,7 @@ export default async function Navbar() {
                     Registrarse
                   </Link>
                 </li>
+                */}
               </>
             ) : (
               <li className="px-4 py-2">
