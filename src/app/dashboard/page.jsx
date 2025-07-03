@@ -22,6 +22,17 @@ export default function HomePage() {
   const [intentosSinNoticias, setIntentosSinNoticias] = useState(0);
   const [actualizandoEstado, setActualizandoEstado] = useState({});
   const [contador, setContador] = useState(null);
+  // Hora local para mostrar debajo del botón
+  const [horaLocal, setHoraLocal] = useState('');
+  useEffect(() => {
+    const updateHora = () => {
+      const ahora = new Date();
+      setHoraLocal(ahora.toLocaleTimeString());
+    };
+    updateHora();
+    const interval = setInterval(updateHora, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     async function fetchNoticias() {
@@ -461,6 +472,7 @@ export default function HomePage() {
               ? `Disponible en ${contador && contador.horas.toString().padStart(2, '0')}:${contador && contador.minutos.toString().padStart(2, '0')}:${contador && contador.segundos.toString().padStart(2, '0')}`
               : "Cargar Noticias"}
         </button>
+        <p className="text-gray-400 mt-2 text-sm">Hora local: {horaLocal}</p>
         {hayNoticias && contador !== null && (
           <p className="text-yellow-600 mt-4">Ya se extrajeron noticias. Podrás volver a cargar a las 8:30 am de mañana.</p>
         )}
