@@ -15,7 +15,7 @@ function LoginPage() {
 
   const onSubmit = handleSubmit(async (data) => {
     const res = await signIn("credentials", {
-      email: data.email,
+      identifier: data.identifier,
       password: data.password,
       redirect: false,
     });
@@ -44,19 +44,19 @@ function LoginPage() {
           Iniciar Sesión
         </h1>
 
-        <label htmlFor="email" className="text-[#1c3881] mb-1 block text-sm">
-          Email:
+        <label htmlFor="identifier" className="text-[#1c3881] mb-1 block text-sm">
+          Usuario o Email:
         </label>
         <input
-          type="email"
-          {...register("email", {
-            required: { value: true, message: "El correo es obligatorio" },
+          type="text"
+          {...register("identifier", {
+            required: { value: true, message: "El usuario o correo es obligatorio" },
           })}
           className="p-3 rounded w-full border border-gray-300 mb-2 focus:outline-none focus:ring-2 focus:ring-[#1c3881]"
-          placeholder="user@email.com"
+          placeholder="usuario o email"
         />
-        {errors.email && (
-          <span className="text-[#e01717] text-xs">{errors.email.message}</span>
+        {errors.identifier && (
+          <span className="text-[#e01717] text-xs">{errors.identifier.message}</span>
         )}
 
         <label

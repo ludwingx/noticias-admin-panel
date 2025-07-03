@@ -21,6 +21,7 @@ export default function HomePage() {
   const [noNews, setNoNews] = useState(false);
   const [intentosSinNoticias, setIntentosSinNoticias] = useState(0);
   const [actualizandoEstado, setActualizandoEstado] = useState({});
+  const [contador, setContador] = useState(null);
 
   useEffect(() => {
     async function fetchNoticias() {
@@ -353,6 +354,98 @@ export default function HomePage() {
     );
   }
 
+  // Utilidad para saber si hay noticias de hoy (hora boliviana) usando created_at
+  function hayNoticiasDeHoy() {
+    const ahora = new Date();
+    // Hora boliviana UTC-4
+    const ahoraBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const yyyy = ahoraBolivia.getFullYear();
+    const mm = ahoraBolivia.getMonth();
+    const dd = ahoraBolivia.getDate();
+    return noticias.some(n => {
+      if (!n.created_at) return false;
+      const fecha = new Date(n.created_at);
+      const fechaBolivia = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+      return fechaBolivia.getFullYear() === yyyy && fechaBolivia.getMonth() === mm && fechaBolivia.getDate() === dd;
+    });
+  }
+
+  // Filtrar noticias: solo mostrar las extraídas después de las 8:30 am (hora boliviana) de hoy
+  function filtrarNoticiasDespuesDe830AM(noticias) {
+    const ahora = new Date();
+    // Hora boliviana UTC-4
+    const hoyBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const yyyy = hoyBolivia.getFullYear();
+    const mm = hoyBolivia.getMonth();
+    const dd = hoyBolivia.getDate();
+    // 8:30 am hora boliviana
+    const fecha830 = new Date(Date.UTC(yyyy, mm, dd, 12, 30, 0)); // 8:30 am UTC-4 = 12:30 UTC
+    return noticias.filter(n => {
+      if (!n.created_at) return false;
+      const fecha = new Date(n.created_at);
+      // Convertir created_at a hora boliviana
+      const fechaBolivia = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+      // Solo mostrar noticias de hoy después de las 8:30 am
+      return fechaBolivia.getFullYear() === yyyy && fechaBolivia.getMonth() === mm && fechaBolivia.getDate() === dd && fechaBolivia >= fecha830;
+    });
+  }
+
+  // Calcula el tiempo restante hasta las 8:30 am del día siguiente (hora boliviana)
+  function getTiempoRestanteHasta830amSiguiente() {
+    const ahora = new Date();
+    const ahoraBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const yyyy = ahoraBolivia.getFullYear();
+    const mm = ahoraBolivia.getMonth();
+    const dd = ahoraBolivia.getDate();
+    // 8:30 am de mañana
+    const manana830 = new Date(Date.UTC(yyyy, mm, dd + 1, 12, 30, 0));
+    const diffMs = manana830.getTime() - ahoraBolivia.getTime();
+    if (diffMs <= 0) return null;
+    const horas = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((diffMs % (1000 * 60)) / 1000);
+    return { horas, minutos, segundos };
+  }
+
+  // Encuentra la primera noticia extraída hoy después de las 8:30 am
+  function getPrimeraNoticiaHoyDespuesDe830(noticias) {
+    const ahora = new Date();
+    const hoyBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const yyyy = hoyBolivia.getFullYear();
+    const mm = hoyBolivia.getMonth();
+    const dd = hoyBolivia.getDate();
+    const fecha830 = new Date(Date.UTC(yyyy, mm, dd, 12, 30, 0));
+    return noticias.find(n => {
+      if (!n.created_at) return false;
+      const fecha = new Date(n.created_at);
+      const fechaBolivia = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+      return fechaBolivia.getFullYear() === yyyy && fechaBolivia.getMonth() === mm && fechaBolivia.getDate() === dd && fechaBolivia >= fecha830;
+    });
+  }
+
+  // hooks y lógica de noticias filtradas
+  const noticiasFiltradas = filtrarNoticiasDespuesDe830AM(noticias);
+  const yaExtrajoHoy = hayNoticiasDeHoy();
+  const primeraNoticiaHoy = getPrimeraNoticiaHoyDespuesDe830(noticias);
+
+  useEffect(() => {
+    let interval;
+    function updateContador() {
+      if (yaExtrajoHoy && primeraNoticiaHoy) {
+        setContador(getTiempoRestanteHasta830amSiguiente());
+      } else {
+        setContador(null);
+      }
+    }
+    updateContador();
+    if (yaExtrajoHoy && primeraNoticiaHoy) {
+      interval = setInterval(updateContador, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [yaExtrajoHoy, primeraNoticiaHoy]);
+
   if (loading) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-10">
@@ -361,19 +454,25 @@ export default function HomePage() {
     );
   }
 
-  // Mostrar botón de extraer noticias si no hay noticias
-  if (noticias.length === 0) {
+  if (!loading && noticiasFiltradas.length === 0) {
     return (
       <main className="min-h-[70vh] flex flex-col justify-center items-center px-4 py-10 bg-white max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Noticias recientes</h1>
         <p className="text-gray-500 text-lg mb-6">No hay noticias disponibles.</p>
         <button
           onClick={ejecutarWebhook}
-          disabled={ejecutandoWebhook || waiting}
+          disabled={ejecutandoWebhook || waiting || (yaExtrajoHoy && primeraNoticiaHoy)}
           className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition text-base"
         >
-          {ejecutandoWebhook || waiting ? "Ejecutando..." : "Cargar Noticias"}
+          {ejecutandoWebhook || waiting
+            ? "Ejecutando..."
+            : (yaExtrajoHoy && primeraNoticiaHoy && contador !== null)
+              ? `Disponible en ${contador && contador.horas.toString().padStart(2, '0')}:${contador && contador.minutos.toString().padStart(2, '0')}:${contador && contador.segundos.toString().padStart(2, '0')}`
+              : "Cargar Noticias"}
         </button>
+        {yaExtrajoHoy && primeraNoticiaHoy && contador !== null && (
+          <p className="text-yellow-600 mt-4">Ya se extrajeron noticias hoy. Podrás volver a cargar a las 8:30 am de mañana.</p>
+        )}
         {webhookError && <p className="text-red-600 mt-4">{webhookError}</p>}
         {showModal && <ModalEspera />}
       </main>
@@ -402,10 +501,14 @@ export default function HomePage() {
           </button>
           <button
             onClick={ejecutarWebhook}
-            disabled={ejecutandoWebhook}
+            disabled={ejecutandoWebhook || waiting || (yaExtrajoHoy && primeraNoticiaHoy) || (noticiasFiltradas.length > 0 && yaExtrajoHoy && primeraNoticiaHoy)}
             className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition text-sm sm:text-base"
           >
-            {ejecutandoWebhook ? "Ejecutando..." : "Cargar Noticias"}
+            {ejecutandoWebhook || waiting
+              ? "Ejecutando..."
+              : (noticiasFiltradas.length > 0 && yaExtrajoHoy && primeraNoticiaHoy && contador !== null)
+                ? `Disponible en ${contador && contador.horas.toString().padStart(2, '0')}:${contador && contador.minutos.toString().padStart(2, '0')}:${contador && contador.segundos.toString().padStart(2, '0')}`
+                : "Cargar Noticias"}
           </button>
         </div>
       </h1>
@@ -414,7 +517,7 @@ export default function HomePage() {
       {webhookError && <p className="text-red-600 mb-4">{webhookError}</p>}
 
       <div className="grid gap-6">
-        {noticias.map((noticia) => {
+        {noticiasFiltradas.map((noticia) => {
           const estadoActual =
             estados[noticia.id]?.toLowerCase() ||
             noticia.estado?.toLowerCase() ||

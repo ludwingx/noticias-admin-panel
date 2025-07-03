@@ -8,16 +8,20 @@ export const authOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text", placeholder: "jsmith" },
+        identifier: { label: "Email o Usuario", type: "text", placeholder: "usuario o email" },
         password: { label: "Password", type: "password", placeholder: "*****" },
       },
       async authorize(credentials, req) {
         console.log(credentials)
 
-        const userFound = await db.user.findUnique({
-            where: {
-                email: credentials.email
-            }
+        // Buscar por email o username
+        const userFound = await db.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials.identifier },
+              { username: credentials.identifier }
+            ]
+          }
         })
 
         if (!userFound) throw new Error('No user found')
@@ -29,9 +33,9 @@ export const authOptions = {
         if (!matchPassword) throw new Error('Wrong password')
 
         return {
-            id: userFound.id,
-            name: userFound.username,
-            email: userFound.email,
+          id: userFound.id,
+          name: userFound.username,
+          email: userFound.email,
         }
       },
     }),
