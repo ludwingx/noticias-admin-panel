@@ -38,7 +38,23 @@ export default function HomePage() {
         }
       );
       if (!res.ok) throw new Error("Error al ejecutar el webhook");
-      alert("✅ Flujo ejecutado correctamente");
+      // Esperar hasta que haya datos en la BDD (noticias del día)
+      let intentos = 0;
+      let nuevasNoticias = [];
+      while (intentos < 10) { // máximo 10 intentos (~20s)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const noticiasRes = await fetch("/api/noticias");
+        nuevasNoticias = await noticiasRes.json();
+        if (Array.isArray(nuevasNoticias) && nuevasNoticias.length > 0) {
+          break;
+        }
+        intentos++;
+      }
+      setNoticias(Array.isArray(nuevasNoticias) ? nuevasNoticias : []);
+      // Recargar la página cuando se hayan extraído noticias
+      if (Array.isArray(nuevasNoticias) && nuevasNoticias.length > 0) {
+        window.location.reload();
+      }
     } catch (err) {
       console.error(err);
       setWebhookError("Error al ejecutar el flujo de N8N.");
@@ -109,8 +125,8 @@ export default function HomePage() {
       let y = margin;
 
       const logoUrl = "https://i.ibb.co/BVtY6hmb/image-4.png";
-      const logoHeight = 70;
-      const logoWidth = 370;
+      const logoHeight = 60;
+      const logoWidth = 340;
       const logoBase64 = await getBase64ImageFromUrl(logoUrl);
 
       if (logoBase64) {
@@ -129,19 +145,18 @@ export default function HomePage() {
         dateStyle: "full",
         timeStyle: "short",
       });
-
+     y += 30;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor("#12358d");
-      doc.text(`Boletín ${fechaHora}`, pageWidth / 2, y, { align: "center" });
-
-      y += 18;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(12);
+      doc.setFontSize(20);
       doc.setTextColor("#000000");
-      doc.text(fechaHora, pageWidth / 2, y, { align: "center" });
+      doc.text(`Tuto Noticias - ${fechaHora}`, pageWidth / 2, y, { align: "center" });
 
+      // Eliminar la segunda impresión de la fecha (ya se muestra en el título)
+      // doc.setFont("helvetica", "normal");
+      // doc.setFontSize(12);
+      // doc.setTextColor("#000000");
+      // doc.text(fechaHora, pageWidth / 2, y, { align: "center" });
+      // y += 30;
       y += 30;
 
       for (let i = 0; i < noticiasAprobadas.length; i++) {
@@ -170,7 +185,7 @@ export default function HomePage() {
         cursorY += 18;
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
+        doc.setFontSize(13);
         doc.setTextColor("#12358d");
         const titleLines = doc.splitTextToSize(noticia.titulo, boxWidth - padding * 2);
         doc.text(titleLines, margin + padding, cursorY);
@@ -200,7 +215,9 @@ export default function HomePage() {
         doc.setFont("helvetica", "italic");
         doc.setFontSize(11);
         doc.setTextColor("#000000");
-        const resumenLines = doc.splitTextToSize(noticia.resumen || "", boxWidth - padding * 2);
+        // Mostrar resumenIA si existe, si no mostrar resumen normal
+        const resumenMostrar = noticia.resumenIA || noticia.resumen || "";
+        const resumenLines = doc.splitTextToSize(resumenMostrar, boxWidth - padding * 2);
         doc.text(resumenLines, margin + padding, cursorY);
         cursorY += resumenLines.length * 16;
 
@@ -226,7 +243,17 @@ export default function HomePage() {
         }
       }
 
-      doc.save("boletin-noticias.pdf");
+      // Obtener la fecha en formato '1ro de Julio'
+      const meses = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+      ];
+      const fechaActual = new Date();
+      const dia = fechaActual.getDate();
+      const sufijo = dia === 1 ? "ro" : "";
+      const mes = meses[fechaActual.getMonth()];
+      const nombrePDF = `TutoNoticias-${dia}${sufijo} de ${mes}`;
+
+      doc.save(`${nombrePDF}.pdf`);
     } catch (e) {
       console.error(e);
       setErrorGen("Error generando PDF");
@@ -243,11 +270,20 @@ export default function HomePage() {
     );
   }
 
+  // Mostrar botón de extraer noticias si no hay noticias
   if (noticias.length === 0) {
     return (
       <main className="min-h-[70vh] flex flex-col justify-center items-center px-4 py-10 bg-white max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Noticias recientes</h1>
-        <p className="text-gray-500 text-lg">No hay noticias disponibles.</p>
+        <p className="text-gray-500 text-lg mb-6">No hay noticias disponibles.</p>
+        <button
+          onClick={ejecutarWebhook}
+          disabled={ejecutandoWebhook}
+          className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition text-base"
+        >
+          {ejecutandoWebhook ? "Ejecutando..." : "Cargar Noticias"}
+        </button>
+        {webhookError && <p className="text-red-600 mt-4">{webhookError}</p>}
       </main>
     );
   }
