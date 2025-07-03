@@ -1,16 +1,19 @@
-
 import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 
 const prisma = new PrismaClient();
 
-// GET: Obtener las noticias creadas hoy (hora boliviana)
-// GET: Obtener las noticias creadas hoy (hora boliviana)
 export async function GET() {
   try {
+    // Obtener hora actual en Bolivia
     const boliviaNow = DateTime.now().setZone('America/La_Paz');
     let start830, end830;
 
+    if (!boliviaNow.isValid) {
+      throw new Error('Fecha no válida en zona horaria America/La_Paz');
+    }
+
+    // Definir rango: 8:30 am a 8:30 am (Bolivia)
     if (
       boliviaNow.hour < 8 ||
       (boliviaNow.hour === 8 && boliviaNow.minute < 30)
@@ -23,17 +26,20 @@ export async function GET() {
       end830 = start830.plus({ days: 1 });
     }
 
+    // Convertir a UTC
     const startUTC = start830.toUTC().toJSDate();
     const endUTC = end830.toUTC().toJSDate();
 
-    // 🔍 Log de depuración
-    console.log("🕒 Bolivia Now:", boliviaNow.toISO());
-    console.log("🔽 Rango Bolivia:");
-    console.log("⏰ Inicio (Bolivia):", start830.toISO());
-    console.log("⏰ Fin (Bolivia):", end830.toISO());
-    console.log("🌐 Rango UTC:");
-    console.log("⏰ Inicio (UTC):", startUTC.toISOString());
-    console.log("⏰ Fin (UTC):", endUTC.toISOString());
+    // 🔍 Logs para desarrollo
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("🕒 Bolivia Now:", boliviaNow.toISO());
+      console.log("🔽 Rango Bolivia:");
+      console.log("⏰ Inicio (Bolivia):", start830.toISO());
+      console.log("⏰ Fin (Bolivia):", end830.toISO());
+      console.log("🌐 Rango UTC:");
+      console.log("⏰ Inicio (UTC):", startUTC.toISOString());
+      console.log("⏰ Fin (UTC):", endUTC.toISOString());
+    }
 
     const noticias = await prisma.news.findMany({
       where: {
@@ -46,7 +52,10 @@ export async function GET() {
       take: 10,
     });
 
-    console.log("📰 Noticias encontradas:", noticias.length);
+    // Si estás en desarrollo, puedes ver la cantidad de noticias
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("📰 Noticias encontradas:", noticias.length);
+    }
 
     const noticiasParseadas = noticias.map((n) => ({
       ...n,
@@ -69,8 +78,6 @@ export async function GET() {
   }
 }
 
-
-// PUT: Aprobar o rechazar noticia
 export async function PUT(request) {
   try {
     const body = await request.json();
