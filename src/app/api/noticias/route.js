@@ -27,11 +27,6 @@ export async function GET() {
     const startUTC = start830.toUTC().toJSDate();
     const endUTC = end830.toUTC().toJSDate();
 
-    // Debug logs
-    console.log("🕒 Bolivia Now:", boliviaNow.toISO());
-    console.log("⏰ Inicio (UTC):", startUTC.toISOString());
-    console.log("⏰ Fin (UTC):", endUTC.toISOString());
-
     const noticias = await prisma.news.findMany({
       where: {
         created_at: {
@@ -43,21 +38,24 @@ export async function GET() {
       take: 10,
     });
 
-    console.log("📰 Noticias encontradas:", noticias.length);
-
-    const noticiasParseadas = noticias.map((n) => ({
-      ...n,
-      tag: typeof n.tag === 'string' ? JSON.parse(n.tag) : n.tag,
-    }));
-
-    return new Response(JSON.stringify(noticiasParseadas), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (e) {
-    console.error("❌ Error en GET:", e);
     return new Response(
-      JSON.stringify({ error: 'Error al obtener noticias', detail: e.message }),
+      JSON.stringify({
+        boliviaNow: boliviaNow.toISO(),
+        startUTC: startUTC.toISOString(),
+        endUTC: endUTC.toISOString(),
+        noticias: noticias.map((n) => ({
+          id: n.id,
+          created_at: n.created_at.toISOString(),
+        })),
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ error: e.message }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -65,6 +63,7 @@ export async function GET() {
     );
   }
 }
+
 
 
 export async function PUT(request) {
