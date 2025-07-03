@@ -342,7 +342,7 @@ export default function HomePage() {
     useEffect(() => {
       const interval = setInterval(() => {
         setDots((prev) => (prev.length < 3 ? prev + '.' : ''));
-      }, 500);
+      }, 400);
       return () => clearInterval(interval);
     }, []);
 
@@ -350,17 +350,6 @@ export default function HomePage() {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
         <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center min-w-[300px]">
           <span className="text-lg font-semibold mb-2">Buscando noticias{dots}</span>
-          {noNews && (
-            <>
-              <span className="text-red-600 mb-4">No se encontraron noticias</span>
-              <button
-                className="mt-2 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 text-gray-800 font-semibold"
-                onClick={() => { setShowModal(false); setWaiting(false); setEjecutandoWebhook(false); setIntentosSinNoticias(0); setNoNews(false); setGenerando(false); }}
-              >
-                Cerrar
-              </button>
-            </>
-          )}
         </div>
       </div>
     );
