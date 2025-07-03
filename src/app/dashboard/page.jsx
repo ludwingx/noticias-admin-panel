@@ -24,6 +24,12 @@ export default function HomePage() {
   const [contador, setContador] = useState(null);
   // Hora local para mostrar debajo del botón
   const [horaLocal, setHoraLocal] = useState('');
+  const [activeSection, setActiveSection] = useState("all");
+
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+  };
+
   useEffect(() => {
     const updateHora = () => {
       const ahora = new Date();
@@ -176,33 +182,33 @@ export default function HomePage() {
   async function generarBoletin() {
     setGenerando(true);
     setErrorGen(null);
-
+  
     try {
       const res = await fetch("/api/noticias");
       if (!res.ok) throw new Error("Error al obtener noticias desde la base de datos");
       const data = await res.json();
-
+  
       const noticiasAprobadas = data.filter(
         (n) => n.estado?.toLowerCase() === "aprobado"
       );
-
+  
       if (noticiasAprobadas.length === 0) {
         setErrorGen("No hay noticias aprobadas para generar el boletín.");
         setGenerando(false);
         return;
       }
-
+  
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 40;
       let y = margin;
-
+  
       const logoUrl = "https://i.ibb.co/BVtY6hmb/image-4.png";
       const logoHeight = 60;
       const logoWidth = 340;
       const logoBase64 = await getBase64ImageFromUrl(logoUrl);
-
+  
       if (logoBase64) {
         doc.addImage(
           logoBase64,
@@ -214,42 +220,36 @@ export default function HomePage() {
         );
       }
       y += logoHeight + 24;
-
+  
       const fechaHora = new Date().toLocaleString("es-ES", {
         dateStyle: "full",
         timeStyle: "short",
       });
-     y += 30;
+      y += 30;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(20);
       doc.setTextColor("#000000");
       doc.text(`Tuto Noticias - ${fechaHora}`, pageWidth / 2, y, { align: "center" });
-
-      // Eliminar la segunda impresión de la fecha (ya se muestra en el título)
-      // doc.setFont("helvetica", "normal");
-      // doc.setFontSize(12);
-      // doc.setTextColor("#000000");
-      // doc.text(fechaHora, pageWidth / 2, y, { align: "center" });
-      // y += 30;
       y += 30;
-
-      for (let i = 0; i < noticiasAprobadas.length; i++) {
+  
+      // Primera página: máximo 2 noticias
+      let noticiasEnPrimeraPagina = Math.min(noticiasAprobadas.length, 2);
+      let noticiasRestantes = noticiasAprobadas.length - noticiasEnPrimeraPagina;
+  
+      // Procesar primera página (2 noticias)
+      for (let i = 0; i < noticiasEnPrimeraPagina; i++) {
         const noticia = noticiasAprobadas[i];
-        if (y > pageHeight - margin - 260) {
-          doc.addPage();
-          y = margin;
-        }
-
+        const boxHeight = 240;
+  
         const boxWidth = pageWidth - margin * 2;
-        const boxHeight = 260;
         doc.setDrawColor("#e0e0e0");
         doc.setFillColor("#ffffff");
         doc.setLineWidth(1);
         doc.roundedRect(margin, y, boxWidth, boxHeight, 6, 6, "FD");
-
+  
         const padding = 15;
         let cursorY = y + padding;
-
+  
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor("#000000");
@@ -257,14 +257,14 @@ export default function HomePage() {
         const metaText = `${fechaPub} | Autor: ${noticia.autor || "Desconocido"}`;
         doc.text(metaText, margin + padding, cursorY);
         cursorY += 18;
-
+  
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.setTextColor("#12358d");
         const titleLines = doc.splitTextToSize(noticia.titulo, boxWidth - padding * 2);
         doc.text(titleLines, margin + padding, cursorY);
         cursorY += titleLines.length * 18;
-
+  
         if (noticia.imagen) {
           const imgData = await getBase64ImageFromUrl(noticia.imagen);
           if (imgData) {
@@ -285,39 +285,107 @@ export default function HomePage() {
             cursorY += imgHeight + 10;
           }
         }
-
+  
         doc.setFont("helvetica", "italic");
         doc.setFontSize(11);
         doc.setTextColor("#000000");
-        // Mostrar resumenIA si existe, si no mostrar resumen normal
         const resumenMostrar = noticia.resumenIA || noticia.resumen || "";
         const resumenLines = doc.splitTextToSize(resumenMostrar, boxWidth - padding * 2);
         doc.text(resumenLines, margin + padding, cursorY);
         cursorY += resumenLines.length * 16;
-
+  
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
         doc.setTextColor("#da0b0a");
         doc.textWithLink("Leer más", margin + padding, cursorY, {
           url: noticia.url || "#",
         });
-
+  
         y += boxHeight + 15;
-        if (i !== noticiasAprobadas.length - 1) {
-          doc.setDrawColor("#cccccc");
-          doc.setLineWidth(0.8);
-          const dashLength = 4;
-          let x = margin;
-          const xEnd = pageWidth - margin;
-          while (x < xEnd) {
-            doc.line(x, y, x + dashLength, y);
-            x += dashLength * 2;
+      }
+  
+      // Si hay más noticias, crear nuevas páginas con 3 noticias cada una
+      if (noticiasRestantes > 0) {
+        let noticiasEnPagina = 0;
+        doc.addPage();
+        y = margin;
+      
+        for (let i = noticiasEnPrimeraPagina; i < noticiasAprobadas.length; i++) {
+          const noticia = noticiasAprobadas[i];
+          const boxHeight = 260;
+      
+          // Si ya hay 3 noticias en la página, crear nueva página
+          if (noticiasEnPagina === 3) {
+            doc.addPage();
+            y = margin;
+            noticiasEnPagina = 0;
           }
-          y += 15;
+      
+          const boxWidth = pageWidth - margin * 2;
+          doc.setDrawColor("#e0e0e0");
+          doc.setFillColor("#ffffff");
+          doc.setLineWidth(1);
+          doc.roundedRect(margin, y, boxWidth, boxHeight, 6, 6, "FD");
+      
+          const padding = 15;
+          let cursorY = y + padding;
+      
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor("#000000");
+          const fechaPub = new Date(noticia.fecha_publicacion).toLocaleDateString();
+          const metaText = `${fechaPub} | Autor: ${noticia.autor || "Desconocido"}`;
+          doc.text(metaText, margin + padding, cursorY);
+          cursorY += 18;
+      
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(13);
+          doc.setTextColor("#12358d");
+          const titleLines = doc.splitTextToSize(noticia.titulo, boxWidth - padding * 2);
+          doc.text(titleLines, margin + padding, cursorY);
+          cursorY += titleLines.length * 18;
+      
+          if (noticia.imagen) {
+            const imgData = await getBase64ImageFromUrl(noticia.imagen);
+            if (imgData) {
+              const maxImgWidth = boxWidth - padding * 2;
+              const imgObj = document.createElement("img");
+              imgObj.src = imgData;
+              await new Promise((r) => (imgObj.onload = r));
+              const ratio = imgObj.naturalHeight / imgObj.naturalWidth;
+              let imgWidth = maxImgWidth;
+              let imgHeight = imgWidth * ratio;
+              if (imgHeight > 120) {
+                imgHeight = 120;
+                imgWidth = imgHeight / ratio;
+              }
+              doc.setFillColor("#fff");
+              doc.roundedRect(margin + padding - 2, cursorY - 2, imgWidth + 4, imgHeight + 4, 4, 4, "F");
+              doc.addImage(imgData, "PNG", margin + padding, cursorY, imgWidth, imgHeight);
+              cursorY += imgHeight + 10;
+            }
+          }
+      
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(11);
+          doc.setTextColor("#000000");
+          const resumenMostrar = noticia.resumenIA || noticia.resumen || "";
+          const resumenLines = doc.splitTextToSize(resumenMostrar, boxWidth - padding * 2);
+          doc.text(resumenLines, margin + padding, cursorY);
+          cursorY += resumenLines.length * 16;
+      
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor("#da0b0a");
+          doc.textWithLink("Leer más", margin + padding, cursorY, {
+            url: noticia.url || "#",
+          });
+      
+          y += boxHeight + 5;
+          noticiasEnPagina++;
         }
       }
-
-      // Obtener la fecha en formato '1ro de Julio'
+  
       const meses = [
         "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
       ];
@@ -326,7 +394,7 @@ export default function HomePage() {
       const sufijo = dia === 1 ? "ro" : "";
       const mes = meses[fechaActual.getMonth()];
       const nombrePDF = `TutoNoticias-${dia}${sufijo} de ${mes}`;
-
+  
       doc.save(`${nombrePDF}.pdf`);
     } catch (e) {
       console.error(e);
@@ -389,7 +457,7 @@ export default function HomePage() {
     let interval;
     function updateContador() {
       if (yaExtrajoHoy) {
-        setContador(getTiempoRestanteHasta830amSiguiente());
+        setContador(getTiempoRestanteHasta8amSiguiente());
       } else {
         setContador(null);
       }
@@ -404,19 +472,21 @@ export default function HomePage() {
   }, [yaExtrajoHoy]);
 
   // Encuentra la primera noticia extraída hoy después de las 8:30 am
-  function getPrimeraNoticiaHoyDespuesDe830(noticias) {
+  function getTiempoRestanteHasta8amSiguiente() {
     const ahora = new Date();
-    const hoyBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
-    const yyyy = hoyBolivia.getFullYear();
-    const mm = hoyBolivia.getMonth();
-    const dd = hoyBolivia.getDate();
-    const fecha830 = new Date(Date.UTC(yyyy, mm, dd, 12, 30, 0));
-    return noticias.find(n => {
-      if (!n.created_at) return false;
-      const fecha = new Date(n.created_at);
-      const fechaBolivia = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
-      return fechaBolivia.getFullYear() === yyyy && fechaBolivia.getMonth() === mm && fechaBolivia.getDate() === dd && fechaBolivia >= fecha830;
-    });
+    // Hora boliviana UTC-4
+    const ahoraBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    let siguiente8 = new Date(ahoraBolivia);
+    siguiente8.setHours(8, 0, 0, 0); // 8:00 am
+    if (ahoraBolivia >= siguiente8) {
+      // Si ya pasó hoy a las 8:00, sumar un día
+      siguiente8.setDate(siguiente8.getDate() + 1);
+    }
+    const diff = siguiente8 - ahoraBolivia;
+    const horas = Math.floor(diff / (1000 * 60 * 60));
+    const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((diff % (1000 * 60)) / 1000);
+    return { horas, minutos, segundos };
   }
 
   // Calcula el tiempo restante hasta las 8:30 am del día siguiente (hora boliviana)
@@ -505,249 +575,280 @@ export default function HomePage() {
         </div>
       </h1>
 
+      <div className="flex items-center gap-2 mb-6">
+  <span className="text-gray-600 text-sm font-medium">Filtrar por:</span>
+  <select
+    value={activeSection}
+    onChange={e => handleSectionChange(e.target.value)}
+    className="ml-2 px-3 py-2 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm"
+  >
+    <option value="all">Todas</option>
+    <option value="tuto">Tuto Quiroga</option>
+    <option value="jp">Juan Pablo Velasco</option>
+    <option value="otros">Otras Noticias</option>
+  </select>
+</div>
+
       {errorGen && <p className="text-red-600 mb-4">{errorGen}</p>}
       {webhookError && <p className="text-red-600 mb-4">{webhookError}</p>}
 
       {/* Noticias TUTO */}
-      {noticiasTuto.length > 0 && (
+      {activeSection === "all" || activeSection === "tuto" ? (
         <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-[#123488]">Tuto Quiroga</h2>
-          <div className="grid gap-6">
-            {noticiasTuto.map((noticia) => {
-              const estadoActual =
-                estados[noticia.id]?.toLowerCase() ||
-                noticia.estado?.toLowerCase() ||
-                null;
-              const estaActualizando = actualizandoEstado[noticia.id];
+          <h2 className="text-xl font-bold mb-4 text-[#123488]">Noticias de: Tuto Quiroga</h2>
+          {noticiasTuto.length > 0 ? (
+            <div className="grid gap-6">
+              {noticiasTuto.map((noticia) => {
+                const estadoActual =
+                  estados[noticia.id]?.toLowerCase() ||
+                  noticia.estado?.toLowerCase() ||
+                  null;
+                const estaActualizando = actualizandoEstado[noticia.id];
 
-              return (
-                <article
-                  key={noticia.id}
-                  className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
-                >
-                  <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                    Publicado por{" "}
-                    <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
-                    {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
-                  </p>
+                return (
+                  <article
+                    key={noticia.id}
+                    className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
+                  >
+                    <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                      Publicado por{" "}
+                      <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
+                      {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
+                    </p>
 
-                  {noticia.imagen && (
-                    <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
-                      <Image
-                        src={noticia.imagen}
-                        alt={noticia.titulo}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  )}
+                    {noticia.imagen && (
+                      <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
+                        <Image
+                          src={noticia.imagen}
+                          alt={noticia.titulo}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
 
-                  <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
+                    <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
 
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
-                    <a
-                      href={noticia.url || "#"}
-                      className="text-[#123488] hover:underline text-sm font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Leer más →
-                    </a>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => manejarEstado(noticia.id, "aprobado")}
-                        disabled={estaActualizando}
-                        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-                          estadoActual === "aprobado"
-                            ? "bg-green-600 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-green-400"
-                        } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
+                      <a
+                        href={noticia.url || "#"}
+                        className="text-[#123488] hover:underline text-sm font-medium"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        <MdCheckCircle className="text-lg" />
-                        {estaActualizando ? "Actualizando..." : "Aprobar"}
-                      </button>
-                      <button
-                        onClick={() => manejarEstado(noticia.id, "rechazado")}
-                        disabled={estaActualizando}
-                        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-                          estadoActual === "rechazado"
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-red-400"
-                        } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
-                      >
-                        <MdCancel className="text-lg" />
-                        {estaActualizando ? "Actualizando..." : "Rechazar"}
-                      </button>
+                        Leer más →
+                      </a>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => manejarEstado(noticia.id, "aprobado")}
+                          disabled={estaActualizando}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                            estadoActual === "aprobado"
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-green-400"
+                          } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <MdCheckCircle className="text-lg" />
+                          {estaActualizando ? "Actualizando..." : "Aprobar"}
+                        </button>
+                        <button
+                          onClick={() => manejarEstado(noticia.id, "rechazado")}
+                          disabled={estaActualizando}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                            estadoActual === "rechazado"
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-red-400"
+                          } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <MdCancel className="text-lg" />
+                          {estaActualizando ? "Actualizando..." : "Rechazar"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500">Hoy no hay noticias de Tuto Quiroga.</p>
+          )}
+          <hr className="border-t border-gray-300 mt-6" />
         </div>
-      )}
+      ) : null}
+
       {/* Noticias JP */}
-      {noticiasJP.length > 0 && (
+      {activeSection === "all" || activeSection === "jp" ? (
         <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-[#da0b0a]">Juan Pablo Velasco</h2>
-          <div className="grid gap-6">
-            {noticiasJP.map((noticia) => {
-              const estadoActual =
-                estados[noticia.id]?.toLowerCase() ||
-                noticia.estado?.toLowerCase() ||
-                null;
-              const estaActualizando = actualizandoEstado[noticia.id];
+          <h2 className="text-xl font-bold mb-4 text-[#da0b0a]">Noticias de: Juan Pablo Velasco</h2>
+          {noticiasJP.length > 0 ? (
+            <div className="grid gap-6">
+              {noticiasJP.map((noticia) => {
+                const estadoActual =
+                  estados[noticia.id]?.toLowerCase() ||
+                  noticia.estado?.toLowerCase() ||
+                  null;
+                const estaActualizando = actualizandoEstado[noticia.id];
 
-              return (
-                <article
-                  key={noticia.id}
-                  className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
-                >
-                  <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                    Publicado por{" "}
-                    <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
-                    {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
-                  </p>
+                return (
+                  <article
+                    key={noticia.id}
+                    className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
+                  >
+                    <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                      Publicado por{" "}
+                      <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
+                      {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
+                    </p>
 
-                  {noticia.imagen && (
-                    <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
-                      <Image
-                        src={noticia.imagen}
-                        alt={noticia.titulo}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  )}
+                    {noticia.imagen && (
+                      <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
+                        <Image
+                          src={noticia.imagen}
+                          alt={noticia.titulo}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
 
-                  <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
+                    <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
 
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
-                    <a
-                      href={noticia.url || "#"}
-                      className="text-[#123488] hover:underline text-sm font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Leer más →
-                    </a>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => manejarEstado(noticia.id, "aprobado")}
-                        disabled={estaActualizando}
-                        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-                          estadoActual === "aprobado"
-                            ? "bg-green-600 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-green-400"
-                        } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
+                      <a
+                        href={noticia.url || "#"}
+                        className="text-[#123488] hover:underline text-sm font-medium"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        <MdCheckCircle className="text-lg" />
-                        {estaActualizando ? "Actualizando..." : "Aprobar"}
-                      </button>
-                      <button
-                        onClick={() => manejarEstado(noticia.id, "rechazado")}
-                        disabled={estaActualizando}
-                        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-                          estadoActual === "rechazado"
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-red-400"
-                        } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
-                      >
-                        <MdCancel className="text-lg" />
-                        {estaActualizando ? "Actualizando..." : "Rechazar"}
-                      </button>
+                        Leer más →
+                      </a>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => manejarEstado(noticia.id, "aprobado")}
+                          disabled={estaActualizando}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                            estadoActual === "aprobado"
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-green-400"
+                          } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <MdCheckCircle className="text-lg" />
+                          {estaActualizando ? "Actualizando..." : "Aprobar"}
+                        </button>
+                        <button
+                          onClick={() => manejarEstado(noticia.id, "rechazado")}
+                          disabled={estaActualizando}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                            estadoActual === "rechazado"
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-red-400"
+                          } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <MdCancel className="text-lg" />
+                          {estaActualizando ? "Actualizando..." : "Rechazar"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500">Hoy no hay noticias de Juan Pablo Velasco.</p>
+          )}
+          <hr className="border-t border-gray-300 mt-6" />
         </div>
-      )}
+      ) : null}
+
       {/* Noticias OTROS */}
-      {noticiasOtros.length > 0 && (
+      {activeSection === "all" || activeSection === "otros" ? (
         <div className="mb-8">
           <h2 className="text-xl font-bold mb-4 text-gray-700">Otras Noticias</h2>
-          <div className="grid gap-6">
-            {noticiasOtros.map((noticia) => {
-              const estadoActual =
-                estados[noticia.id]?.toLowerCase() ||
-                noticia.estado?.toLowerCase() ||
-                null;
-              const estaActualizando = actualizandoEstado[noticia.id];
+          {noticiasOtros.length > 0 ? (
+            <div className="grid gap-6">
+              {noticiasOtros.map((noticia) => {
+                const estadoActual =
+                  estados[noticia.id]?.toLowerCase() ||
+                  noticia.estado?.toLowerCase() ||
+                  null;
+                const estaActualizando = actualizandoEstado[noticia.id];
 
-              return (
-                <article
-                  key={noticia.id}
-                  className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
-                >
-                  <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                    Publicado por{" "}
-                    <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
-                    {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
-                  </p>
+                return (
+                  <article
+                    key={noticia.id}
+                    className="border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col h-full"
+                  >
+                    <h2 className="text-lg sm:text-xl font-semibold mb-1">{noticia.titulo}</h2>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                      Publicado por{" "}
+                      <span className="font-medium">{noticia.autor || "Desconocido"}</span> el{" "}
+                      {new Date(noticia.fecha_publicacion ?? "").toLocaleDateString()}
+                    </p>
 
-                  {noticia.imagen && (
-                    <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
-                      <Image
-                        src={noticia.imagen}
-                        alt={noticia.titulo}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  )}
+                    {noticia.imagen && (
+                      <div className="relative w-full h-40 sm:h-60 mb-4 rounded overflow-hidden">
+                        <Image
+                          src={noticia.imagen}
+                          alt={noticia.titulo}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
 
-                  <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
+                    <p className="text-sm sm:text-base text-gray-700 flex-1">{noticia.resumen}</p>
 
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
-                    <a
-                      href={noticia.url || "#"}
-                      className="text-[#123488] hover:underline text-sm font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Leer más →
-                    </a>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => manejarEstado(noticia.id, "aprobado")}
-                        disabled={estaActualizando}
-                        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-                          estadoActual === "aprobado"
-                            ? "bg-green-600 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-green-400"
-                        } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-2">
+                      <a
+                        href={noticia.url || "#"}
+                        className="text-[#123488] hover:underline text-sm font-medium"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        <MdCheckCircle className="text-lg" />
-                        {estaActualizando ? "Actualizando..." : "Aprobar"}
-                      </button>
-                      <button
-                        onClick={() => manejarEstado(noticia.id, "rechazado")}
-                        disabled={estaActualizando}
-                        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
-                          estadoActual === "rechazado"
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-red-400"
-                        } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
-                      >
-                        <MdCancel className="text-lg" />
-                        {estaActualizando ? "Actualizando..." : "Rechazar"}
-                      </button>
+                        Leer más →
+                      </a>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => manejarEstado(noticia.id, "aprobado")}
+                          disabled={estaActualizando}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                            estadoActual === "aprobado"
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-green-400"
+                          } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <MdCheckCircle className="text-lg" />
+                          {estaActualizando ? "Actualizando..." : "Aprobar"}
+                        </button>
+                        <button
+                          onClick={() => manejarEstado(noticia.id, "rechazado")}
+                          disabled={estaActualizando}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
+                            estadoActual === "rechazado"
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-red-400"
+                          } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <MdCancel className="text-lg" />
+                          {estaActualizando ? "Actualizando..." : "Rechazar"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500">No hay noticias cargadas.</p>
+          )}
+          <hr className="border-t border-gray-300 mt-6" />
         </div>
-      )}
+      ) : null}
     </main>
   );
 }

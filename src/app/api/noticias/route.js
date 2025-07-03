@@ -9,7 +9,7 @@ export async function GET(request) {
     const today8amBolivia = DateTime.now()
       .setZone('America/La_Paz')
       .set({ hour: 8, minute: 0, second: 0, millisecond: 0 });
-
+//fc-5ca4d08044944791b9974dbba018ac2a
     // Si tus datos están en UTC, usa esto:
     const today8amUTC = new Date();
     today8amUTC.setUTCHours(8, 0, 0, 0);
