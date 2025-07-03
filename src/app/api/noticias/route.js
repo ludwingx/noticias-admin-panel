@@ -5,27 +5,35 @@ import { DateTime } from 'luxon';
 const prisma = new PrismaClient();
 
 // GET: Obtener las noticias creadas hoy (hora boliviana)
+// GET: Obtener las noticias creadas hoy (hora boliviana)
 export async function GET() {
   try {
-    // Usar Luxon para manejar la zona horaria de Bolivia
     const boliviaNow = DateTime.now().setZone('America/La_Paz');
     let start830, end830;
+
     if (
       boliviaNow.hour < 8 ||
       (boliviaNow.hour === 8 && boliviaNow.minute < 30)
     ) {
-      // Antes de las 8:30 am: mostrar noticias desde ayer 8:30 am hasta hoy 8:30 am
       const ayer = boliviaNow.minus({ days: 1 });
       start830 = ayer.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
       end830 = boliviaNow.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
     } else {
-      // Después de las 8:30 am: mostrar noticias desde hoy 8:30 am hasta mañana 8:30 am
       start830 = boliviaNow.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
       end830 = start830.plus({ days: 1 });
     }
-    // Convertir a UTC para comparar con la base de datos
+
     const startUTC = start830.toUTC().toJSDate();
     const endUTC = end830.toUTC().toJSDate();
+
+    // 🔍 Log de depuración
+    console.log("🕒 Bolivia Now:", boliviaNow.toISO());
+    console.log("🔽 Rango Bolivia:");
+    console.log("⏰ Inicio (Bolivia):", start830.toISO());
+    console.log("⏰ Fin (Bolivia):", end830.toISO());
+    console.log("🌐 Rango UTC:");
+    console.log("⏰ Inicio (UTC):", startUTC.toISOString());
+    console.log("⏰ Fin (UTC):", endUTC.toISOString());
 
     const noticias = await prisma.news.findMany({
       where: {
@@ -38,6 +46,8 @@ export async function GET() {
       take: 10,
     });
 
+    console.log("📰 Noticias encontradas:", noticias.length);
+
     const noticiasParseadas = noticias.map((n) => ({
       ...n,
       tag: typeof n.tag === 'string' ? JSON.parse(n.tag) : n.tag,
@@ -48,6 +58,7 @@ export async function GET() {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {
+    console.error("❌ Error en GET:", e);
     return new Response(
       JSON.stringify({ error: 'Error al obtener noticias', detail: e.message }),
       {
@@ -57,6 +68,7 @@ export async function GET() {
     );
   }
 }
+
 
 // PUT: Aprobar o rechazar noticia
 export async function PUT(request) {
