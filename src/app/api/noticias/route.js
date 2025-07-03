@@ -1,40 +1,31 @@
+
 import { PrismaClient } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 const prisma = new PrismaClient();
 
 // GET: Obtener las noticias creadas hoy (hora boliviana)
 export async function GET() {
   try {
-    // Calcular el rango: desde las 8:30 am de hoy hasta las 8:30 am de mañana (hora boliviana)
-    const now = new Date();
-    const utc4Offset = -4 * 60; // minutos
-    const boliviaNow = new Date(
-      now.getTime() + (utc4Offset - now.getTimezoneOffset()) * 60000
-    );
-    // Si la hora actual en Bolivia es antes de las 8:30 am, mostrar noticias desde las 8:30 am de AYER hasta las 8:30 am de HOY
-    // Si es después de las 8:30 am, mostrar desde las 8:30 am de HOY hasta las 8:30 am de MAÑANA
+    // Usar Luxon para manejar la zona horaria de Bolivia
+    const boliviaNow = DateTime.now().setZone('America/La_Paz');
     let start830, end830;
     if (
-      boliviaNow.getHours() < 8 ||
-      (boliviaNow.getHours() === 8 && boliviaNow.getMinutes() < 30)
+      boliviaNow.hour < 8 ||
+      (boliviaNow.hour === 8 && boliviaNow.minute < 30)
     ) {
       // Antes de las 8:30 am: mostrar noticias desde ayer 8:30 am hasta hoy 8:30 am
-      const ayer = new Date(boliviaNow);
-      ayer.setDate(boliviaNow.getDate() - 1);
-      start830 = new Date(ayer);
-      start830.setHours(8, 30, 0, 0);
-      end830 = new Date(boliviaNow);
-      end830.setHours(8, 30, 0, 0);
+      const ayer = boliviaNow.minus({ days: 1 });
+      start830 = ayer.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
+      end830 = boliviaNow.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
     } else {
       // Después de las 8:30 am: mostrar noticias desde hoy 8:30 am hasta mañana 8:30 am
-      start830 = new Date(boliviaNow);
-      start830.setHours(8, 30, 0, 0);
-      end830 = new Date(start830);
-      end830.setDate(start830.getDate() + 1);
+      start830 = boliviaNow.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
+      end830 = start830.plus({ days: 1 });
     }
     // Convertir a UTC para comparar con la base de datos
-    const startUTC = new Date(start830.getTime() - utc4Offset * 60000);
-    const endUTC = new Date(end830.getTime() - utc4Offset * 60000);
+    const startUTC = start830.toUTC().toJSDate();
+    const endUTC = end830.toUTC().toJSDate();
 
     const noticias = await prisma.news.findMany({
       where: {
@@ -56,9 +47,9 @@ export async function GET() {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch {
+  } catch (e) {
     return new Response(
-      JSON.stringify({ error: 'Error al obtener noticias' }),
+      JSON.stringify({ error: 'Error al obtener noticias', detail: e.message }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
