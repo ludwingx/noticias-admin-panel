@@ -15,6 +15,12 @@ export default function HomePage() {
   const [errorGen, setErrorGen] = useState(null);
   const [ejecutandoWebhook, setEjecutandoWebhook] = useState(false);
   const [webhookError, setWebhookError] = useState(null);
+  const [timer, setTimer] = useState(20);
+  const [waiting, setWaiting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [noNews, setNoNews] = useState(false);
+  const [intentosSinNoticias, setIntentosSinNoticias] = useState(0);
+  const [actualizandoEstado, setActualizandoEstado] = useState({});
 
   useEffect(() => {
     async function fetchNoticias() {
@@ -27,6 +33,58 @@ export default function HomePage() {
     fetchNoticias();
   }, []);
 
+  // Lógica de polling y espera reutilizable para cualquier acción relevante
+  async function esperarCambioNoticias(condicionCambio, maxIntentos = 3) {
+    setWaiting(true);
+    setShowModal(true);
+    setNoNews(false);
+    setTimer(20);
+    setIntentosSinNoticias(0);
+    let keepWaiting = true;
+    let foundCambio = false;
+    let intentos = 0;
+    try {
+      while (keepWaiting) {
+        // Temporizador de 20 segundos
+        for (let t = 20; t > 0; t--) {
+          setTimer(t);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+        setTimer(0);
+        // Consultar noticias
+        const noticiasRes = await fetch("/api/noticias");
+        const nuevasNoticias = await noticiasRes.json();
+        if (condicionCambio(nuevasNoticias)) {
+          setNoticias(nuevasNoticias);
+          foundCambio = true;
+          keepWaiting = false;
+          setWaiting(false);
+          setShowModal(false);
+          setIntentosSinNoticias(0);
+          setNoNews(false);
+          break;
+        } else {
+          intentos++;
+          setIntentosSinNoticias(intentos);
+          if (intentos >= maxIntentos) {
+            setNoNews(true);
+          }
+        }
+      }
+      if (!foundCambio) {
+        setWaiting(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setWebhookError("Error al esperar cambios en las noticias.");
+      setWaiting(false);
+      setShowModal(false);
+      setIntentosSinNoticias(0);
+      setNoNews(false);
+    }
+  }
+
+  // Reemplazar ejecutarWebhook para usar la función genérica
   async function ejecutarWebhook() {
     setEjecutandoWebhook(true);
     setWebhookError(null);
@@ -38,45 +96,49 @@ export default function HomePage() {
         }
       );
       if (!res.ok) throw new Error("Error al ejecutar el webhook");
-      // Esperar hasta que haya datos en la BDD (noticias del día)
-      let intentos = 0;
-      let nuevasNoticias = [];
-      while (intentos < 10) { // máximo 10 intentos (~20s)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        const noticiasRes = await fetch("/api/noticias");
-        nuevasNoticias = await noticiasRes.json();
-        if (Array.isArray(nuevasNoticias) && nuevasNoticias.length > 0) {
-          break;
-        }
-        intentos++;
-      }
-      setNoticias(Array.isArray(nuevasNoticias) ? nuevasNoticias : []);
-      // Recargar la página cuando se hayan extraído noticias
-      if (Array.isArray(nuevasNoticias) && nuevasNoticias.length > 0) {
-        window.location.reload();
-      }
+      // Esperar hasta que haya noticias nuevas
+      await esperarCambioNoticias((nuevasNoticias) => Array.isArray(nuevasNoticias) && nuevasNoticias.length > 0);
     } catch (err) {
-      console.error(err);
       setWebhookError("Error al ejecutar el flujo de N8N.");
+      setWaiting(false);
+      setShowModal(false);
+      setIntentosSinNoticias(0);
+      setNoNews(false);
     } finally {
       setEjecutandoWebhook(false);
     }
   }
 
   async function manejarEstado(id, nuevoEstado) {
+    setActualizandoEstado((prev) => ({ ...prev, [id]: true }));
+    setWaiting(true);
+    setShowModal(true);
+    setNoNews(false);
+    setTimer(20);
+    setIntentosSinNoticias(0);
     try {
       const res = await fetch("/api/noticias", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, estado: nuevoEstado.toUpperCase() }),
       });
-
       if (!res.ok) throw new Error("Error al actualizar estado");
-
       await res.json();
-      setEstados((prev) => ({ ...prev, [id]: nuevoEstado }));
+      // Esperar hasta que el estado de la noticia cambie en la tabla News
+      await esperarCambioNoticias(
+        (nuevasNoticias) => {
+          const noticiaActualizada = nuevasNoticias.find((n) => n.id === id);
+          return noticiaActualizada && noticiaActualizada.estado?.toLowerCase() === nuevoEstado.toLowerCase();
+        }
+      );
     } catch {
       alert("No se pudo actualizar el estado de la noticia.");
+      setWaiting(false);
+      setShowModal(false);
+      setIntentosSinNoticias(0);
+      setNoNews(false);
+    } finally {
+      setActualizandoEstado((prev) => ({ ...prev, [id]: false }));
     }
   }
 
@@ -262,6 +324,35 @@ export default function HomePage() {
     }
   }
 
+  // Modal de espera
+  function ModalEspera() {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center min-w-[300px]">
+          <span className="text-lg font-semibold mb-2">{waiting ? "Buscando noticias..." : "Procesando..."}</span>
+          <span className="text-4xl font-bold text-blue-700 mb-4">{timer}s</span>
+          {intentosSinNoticias === 2 && (
+            <span className="text-yellow-600 mb-2">Puede que esto tome un poco más de tiempo</span>
+          )}
+          {intentosSinNoticias >= 3 && (
+            <span className="text-red-600 mb-2">Puede que no se hayan encontrado noticias nuevas</span>
+          )}
+          {noNews && (
+            <>
+              <span className="text-red-600 mb-4">No se encontraron noticias</span>
+              <button
+                className="mt-2 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 text-gray-800 font-semibold"
+                onClick={() => { setShowModal(false); setWaiting(false); setEjecutandoWebhook(false); setIntentosSinNoticias(0); setNoNews(false); setGenerando(false); }}
+              >
+                Cerrar
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-10">
@@ -278,12 +369,13 @@ export default function HomePage() {
         <p className="text-gray-500 text-lg mb-6">No hay noticias disponibles.</p>
         <button
           onClick={ejecutarWebhook}
-          disabled={ejecutandoWebhook}
+          disabled={ejecutandoWebhook || waiting}
           className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition text-base"
         >
-          {ejecutandoWebhook ? "Ejecutando..." : "Cargar Noticias"}
+          {ejecutandoWebhook || waiting ? "Ejecutando..." : "Cargar Noticias"}
         </button>
         {webhookError && <p className="text-red-600 mt-4">{webhookError}</p>}
+        {showModal && <ModalEspera />}
       </main>
     );
   }
@@ -327,6 +419,7 @@ export default function HomePage() {
             estados[noticia.id]?.toLowerCase() ||
             noticia.estado?.toLowerCase() ||
             null;
+          const estaActualizando = actualizandoEstado[noticia.id];
 
           return (
             <article
@@ -366,25 +459,27 @@ export default function HomePage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => manejarEstado(noticia.id, "aprobado")}
+                    disabled={estaActualizando}
                     className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
                       estadoActual === "aprobado"
                         ? "bg-green-600 text-white"
                         : "bg-gray-200 text-gray-700 hover:bg-green-400"
-                    }`}
+                    } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <MdCheckCircle className="text-lg" />
-                    Aprobar
+                    {estaActualizando ? "Actualizando..." : "Aprobar"}
                   </button>
                   <button
                     onClick={() => manejarEstado(noticia.id, "rechazado")}
+                    disabled={estaActualizando}
                     className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
                       estadoActual === "rechazado"
                         ? "bg-red-600 text-white"
                         : "bg-gray-200 text-gray-700 hover:bg-red-400"
-                    }`}
+                    } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <MdCancel className="text-lg" />
-                    Rechazar
+                    {estaActualizando ? "Actualizando..." : "Rechazar"}
                   </button>
                 </div>
               </div>
