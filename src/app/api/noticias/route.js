@@ -33,6 +33,9 @@ export async function GET() {
     const startUTC = start830.toUTC().toJSDate();
     const endUTC = end830.toUTC().toJSDate();
 
+    // Log para depurar el rango de fechas usado
+    console.log('Rango UTC para consulta:', startUTC.toISOString(), '->', endUTC.toISOString());
+
     // Consulta con prisma según el rango UTC
     const noticias = await prisma.news.findMany({
       where: {
