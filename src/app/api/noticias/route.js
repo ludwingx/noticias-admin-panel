@@ -46,6 +46,7 @@ export async function GET() {
         noticias: noticias.map((n) => ({
           id: n.id,
           created_at: n.created_at.toISOString(),
+          // agrega aquí los campos que necesites enviar al cliente
         })),
       }),
       {
@@ -55,7 +56,7 @@ export async function GET() {
     );
   } catch (e) {
     return new Response(
-      JSON.stringify({ error: e.message }),
+      JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -64,8 +65,7 @@ export async function GET() {
   }
 }
 
-
-
+// PUT: Aprobar o rechazar noticia
 export async function PUT(request) {
   try {
     const body = await request.json();
@@ -89,7 +89,10 @@ export async function PUT(request) {
     });
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: 'Error al actualizar noticia', detail: error.message }),
+      JSON.stringify({
+        error: 'Error al actualizar noticia',
+        detail: error instanceof Error ? error.message : String(error),
+      }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
