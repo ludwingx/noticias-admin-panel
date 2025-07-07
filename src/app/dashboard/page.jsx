@@ -477,7 +477,7 @@ export default function HomePage() {
     // Hora boliviana UTC-4
     const ahoraBolivia = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
     let siguiente8 = new Date(ahoraBolivia);
-    siguiente8.setHours(8, 0, 0, 0); // 8:00 am
+    siguiente8.setHours(8, 30, 0, 0); // 8:00 am
     if (ahoraBolivia >= siguiente8) {
       // Si ya pasó hoy a las 8:00, sumar un día
       siguiente8.setDate(siguiente8.getDate() + 1);
