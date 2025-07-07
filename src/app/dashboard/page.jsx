@@ -404,7 +404,7 @@ export default function HomePage() {
     }
   }
 
-  // Modal de espera
+  // Modal de espera 
   function ModalEspera() {
     const [dots, setDots] = useState('');
     useEffect(() => {

@@ -5,21 +5,21 @@ const prisma = new PrismaClient();
 
 export async function GET(request) {
   try {
-    // Hora de Bolivia a las 8:00 am
-    const today8amBolivia = DateTime.now()
-      .setZone('America/La_Paz')
-      .set({ hour: 8, minute: 0, second: 0, millisecond: 0 });
-//fc-5ca4d08044944791b9974dbba018ac2a
-    // Si tus datos están en UTC, usa esto:
-    const today8amUTC = new Date();
-    today8amUTC.setUTCHours(8, 0, 0, 0);
+    // Obtener la fecha actual en la zona horaria de Bolivia
+    const nowBolivia = DateTime.now().setZone('America/La_Paz');
     
-    console.log('Filtro UTC:', today8amUTC);
+    // Calcular el límite inferior (ayer a las 8:30 AM)
+    const lowerLimit = nowBolivia.minus({ days: 1 }).set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
+    
+    // Convertir a JS Date para Prisma
+    const lowerLimitDate = lowerLimit.toJSDate();
+    
+    console.log('Filtro desde:', lowerLimit.toString());
     
     const noticias = await prisma.news.findMany({
       where: {
         created_at: {
-          gte: today8amUTC,
+          gte: lowerLimitDate,
         },
       },
       orderBy: {
@@ -27,7 +27,11 @@ export async function GET(request) {
       },
     });
 
-    console.log('Primer created_at:', noticias[0]?.created_at);
+    console.log('Noticias encontradas:', noticias.length);
+    console.log('Rango de fechas:', 
+      noticias[0]?.created_at, 
+      'a', 
+      noticias[noticias.length - 1]?.created_at);
 
     return new Response(JSON.stringify(noticias), {
       status: 200,
