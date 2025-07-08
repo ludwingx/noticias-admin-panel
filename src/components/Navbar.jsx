@@ -3,25 +3,34 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { AiOutlineLogin, AiOutlineUserAdd } from "react-icons/ai";
 import SignOutButton from "./SignOutButton";
+import Image from "next/image";
 
 export default async function Navbar() {
   const session = await getServerSession(authOptions);
 
   return (
     <nav className="bg-gradient-to-r from-white via-blue-50 to-white shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 flex justify-between items-center">
-        {/* Logo */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 flex justify-between items-center relative">
+        {/* Logo izquierdo */}
         <Link href="/" className="flex-shrink-0">
-          <img
-            src="https://i.ibb.co/BVtY6hmb/image-4.png"
-            alt="Tuto Quiroga & Libre, logo"
-            width={180}
+          <Image
+            src="https://i.postimg.cc/rFJtBVqs/Proyecto-nuevo-3.png"
+            alt="Tuto Logo"
+            width={140}
             height={40}
-            className="cursor-pointer select-none"
-            loading="eager"
-            draggable={false}
           />
         </Link>
+
+        {/* Logo centrado */}
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <Image
+            src="https://i.postimg.cc/MZDMg3pY/Proyecto-nuevo-1.png"
+            alt="Libre Logo"
+            width={110}
+            height={40}
+            priority
+          />
+        </div>
 
         {/* Desktop menu */}
         <ul className="hidden md:flex gap-6 text-[#123488] font-semibold text-base items-center">
