@@ -9,25 +9,27 @@ export async function GET(request) {
     const nowBolivia = DateTime.now().setZone("America/La_Paz");
     console.log("Hora actual Bolivia:", nowBolivia.toISO());
 
-    // Corte a las 8:30 AM Bolivia
-    const corteHoy = nowBolivia.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
+    // Corte a las 8:30 AM Bolivia, pero convertido a UTC para la consulta
+    // Esto es crucial: primero creamos el corte en zona Bolivia, luego convertimos a UTC
+    const corteHoyBolivia = nowBolivia.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
 
     let inicioBolivia, finBolivia;
-    if (nowBolivia < corteHoy) {
-      inicioBolivia = corteHoy.minus({ days: 1 });
-      finBolivia = corteHoy;
+    if (nowBolivia < corteHoyBolivia) {
+      inicioBolivia = corteHoyBolivia.minus({ days: 1 });
+      finBolivia = corteHoyBolivia;
     } else {
-      inicioBolivia = corteHoy;
-      finBolivia = corteHoy.plus({ days: 1 });
+      inicioBolivia = corteHoyBolivia;
+      finBolivia = corteHoyBolivia.plus({ days: 1 });
     }
 
+    // Convertir ambos límites a UTC para usarlos en la consulta
     const inicioUTC = inicioBolivia.toUTC().toJSDate();
     const finUTC = finBolivia.toUTC().toJSDate();
 
-    console.log("Rango de consulta (Bolivia):", inicioBolivia.toISO(), "a", finBolivia.toISO());
-    console.log("Rango de consulta (UTC):", inicioUTC.toISOString(), "a", finUTC.toISOString());
+    console.log("Rango consulta en Bolivia:", inicioBolivia.toISO(), "a", finBolivia.toISO());
+    console.log("Rango consulta en UTC:", inicioUTC.toISOString(), "a", finUTC.toISOString());
 
-    // Buscar noticias en rango con corte 8:30 AM
+    // Buscar noticias en ese rango UTC
     let noticias = await prisma.news.findMany({
       where: {
         created_at: {
@@ -38,37 +40,32 @@ export async function GET(request) {
       orderBy: { created_at: "desc" },
     });
 
-    // Log de fechas de noticias encontradas para verificar
-    console.log("Noticias encontradas en rango 8:30 AM:");
-    noticias.forEach((n) => {
-      const fechaBolivia = DateTime.fromJSDate(n.created_at).setZone("America/La_Paz");
-      console.log(`- ID: ${n.id}, Creado: ${fechaBolivia.toFormat("dd/MM/yyyy HH:mm")}`);
+    console.log(`Noticias encontradas: ${noticias.length}`);
+    noticias.forEach(noticia => {
+      const fechaBolivia = DateTime.fromJSDate(noticia.created_at).setZone("America/La_Paz");
+      console.log(`- ID: ${noticia.id}, Creado Bolivia: ${fechaBolivia.toFormat("dd/MM/yyyy HH:mm")}`);
     });
 
-    // Si no hay noticias, fallback: buscar noticias desde medianoche hoy hasta ahora
+    // Si no hay noticias, fallback desde medianoche Bolivia UTC hasta ahora UTC
     if (noticias.length === 0) {
-      const hoyInicio = nowBolivia.startOf("day").toUTC().toJSDate();
-      const ahoraUTC = nowBolivia.toUTC().toJSDate();
+      const inicioDiaBolivia = nowBolivia.startOf("day").toUTC().toJSDate();
+      const ahoraUTC = DateTime.utc().toJSDate();
 
-      console.log("No hubo noticias en el rango 8:30 am, buscando desde medianoche hoy hasta ahora...");
+      console.log("No hubo noticias en rango corte, buscando desde inicio día Bolivia a ahora UTC...");
       noticias = await prisma.news.findMany({
         where: {
           created_at: {
-            gte: hoyInicio,
+            gte: inicioDiaBolivia,
             lte: ahoraUTC,
           },
         },
         orderBy: { created_at: "desc" },
       });
 
-      console.log("Noticias encontradas desde medianoche hasta ahora:");
-      noticias.forEach((n) => {
-        const fechaBolivia = DateTime.fromJSDate(n.created_at).setZone("America/La_Paz");
-        console.log(`- ID: ${n.id}, Creado: ${fechaBolivia.toFormat("dd/MM/yyyy HH:mm")}`);
-      });
+      console.log(`Noticias encontradas fallback: ${noticias.length}`);
     }
 
-    // Si sigue sin haber noticias, mostrar últimas 10 sin filtro
+    // Si sigue vacío, devolver últimas 10 sin filtro
     if (noticias.length === 0) {
       const ultimasNoticias = await prisma.news.findMany({
         take: 10,
@@ -76,19 +73,8 @@ export async function GET(request) {
         select: { id: true, titulo: true, created_at: true, categoria: true },
       });
 
-      console.log("Últimas noticias registradas (sin filtro):");
-      ultimasNoticias.forEach((n) => {
-        const fechaBolivia = DateTime.fromJSDate(n.created_at).setZone("America/La_Paz");
-        console.log(
-          `- ID: ${n.id}, Título: ${n.titulo}, Hora Bolivia: ${fechaBolivia.toFormat("dd/MM/yyyy HH:mm")}, Categoría: ${n.categoria || "N/A"}`
-        );
-      });
-
-      // Para no devolver array vacío, devolvemos estas últimas
       noticias = ultimasNoticias;
     }
-
-    console.log("Cantidad total de noticias devueltas:", noticias.length);
 
     return new Response(JSON.stringify(noticias), {
       status: 200,
