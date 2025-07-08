@@ -13,6 +13,7 @@ export function useNews() {
   const [actualizandoEstado, setActualizandoEstado] = useState({});
   const [contador, setContador] = useState(null);
   const [horaLocal, setHoraLocal] = useState("");
+  const [mostrarModalCargaNoticias, setMostrarModalCargaNoticias] = useState(false);
 
   // Filtrar noticias por categoría
   const noticiasTuto = noticias.filter(
@@ -129,26 +130,26 @@ export function useNews() {
   async function ejecutarWebhook() {
     setEjecutandoWebhook(true);
     setWebhookError(null);
+    setMostrarModalCargaNoticias(true); // ✅ Mostrar el modal
+  
     try {
       const res = await fetch(
-        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
+        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook-test/842aea7e-c1a2-48f2-b681-17aa61268ac5",
         { method: "POST" }
       );
       if (!res.ok) throw new Error("Error al ejecutar el webhook");
-
+  
       await esperarCambioNoticias(
         (nuevasNoticias) => Array.isArray(nuevasNoticias) && nuevasNoticias.length > 0
-      ); // mostrarModal = true por defecto
+      );
     } catch (err) {
       setWebhookError("Error al ejecutar el flujo de N8N.");
-      setWaiting(false);
-      setShowModal(false);
-      setIntentosSinNoticias(0);
-      setNoNews(false);
     } finally {
       setEjecutandoWebhook(false);
+      setMostrarModalCargaNoticias(false); // ✅ Ocultar modal al finalizar
     }
   }
+  
   async function manejarEstado(id, nuevoEstado) {
     // Aplica el cambio local optimista
     setNoticias((prev) =>
@@ -207,6 +208,7 @@ export function useNews() {
     ejecutandoWebhook,
     waiting,
     showModal,
+    mostrarModalCargaNoticias,
     timer,
     noNews,
     intentosSinNoticias,
@@ -214,5 +216,6 @@ export function useNews() {
     contador,
     horaLocal,
     hayNoticias,
+    mostrarModalCargaNoticias,
   };
 }

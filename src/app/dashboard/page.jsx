@@ -22,6 +22,7 @@ export default function HomePage() {
     ejecutandoWebhook,
     waiting,
     showModal,
+    mostrarModalCargaNoticias,
     timer,
     noNews,
     intentosSinNoticias,
