@@ -39,6 +39,7 @@ export default function NewsCard({ noticia, manejarEstado, estaActualizando }) {
         >
           Leer más →
         </a>
+        
         <div className="flex gap-2">
           <button
             onClick={() => manejarEstado(noticia.id, "aprobado")}
@@ -46,19 +47,20 @@ export default function NewsCard({ noticia, manejarEstado, estaActualizando }) {
             className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
               estadoActual === "aprobado"
                 ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-green-400"
+                : "bg-gray-200 text-gray-700 hover:bg-green-500 hover:text-white"
             } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <MdCheckCircle className="text-lg" />
             {estaActualizando ? "Actualizando..." : "Aprobar"}
           </button>
+          
           <button
             onClick={() => manejarEstado(noticia.id, "rechazado")}
             disabled={estaActualizando}
             className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${
               estadoActual === "rechazado"
                 ? "bg-red-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-red-400"
+                : "bg-gray-200 text-gray-700 hover:bg-red-500 hover:text-white"
             } ${estaActualizando ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <MdCancel className="text-lg" />

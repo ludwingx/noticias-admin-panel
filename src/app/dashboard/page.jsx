@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import NewsSection from "@/components/NewsSection";
 import ActionButtons from "@/components/ActionButtons";
 import Filters from "@/components/Filters";
@@ -35,10 +35,13 @@ export default function HomePage() {
 
   const [activeSection, setActiveSection] = useState("all");
 
+  // Estado para manejar errores combinados
+  const errorMessage = errorGen || webhookError;
+
   if (loading) {
     return (
-      <main className="max-w-4xl mx-auto px-4 py-10">
-        <p>Cargando noticias...</p>
+      <main className="max-w-4xl mx-auto px-4 py-10 min-h-[70vh] flex items-center justify-center">
+        <p className="text-lg">Cargando noticias...</p>
       </main>
     );
   }
@@ -63,14 +66,18 @@ export default function HomePage() {
         <p className="text-gray-400 mt-2 text-sm">Hora local: {horaLocal}</p>
         
         {hayNoticias && contador !== null && (
-          <p className="text-yellow-600 mt-4">
+          <p className="text-yellow-600 mt-4 text-center">
             Ya se extrajeron noticias. Podrás volver a cargar a las 8:30 am de
             mañana.
           </p>
         )}
         
-        {webhookError && <p className="text-red-600 mt-4">{webhookError}</p>}
-        {showModal && <LoadingModal timer={timer} />}
+        {errorMessage && (
+          <p className="text-red-600 mt-4 text-center max-w-md">
+            {errorMessage}
+          </p>
+        )}
+       {showModal && mostrarModalCargaNoticias && <LoadingModal timer={timer} />}
       </main>
     );
   }
@@ -96,11 +103,17 @@ export default function HomePage() {
         setActiveSection={setActiveSection} 
       />
 
-      {errorGen && <p className="text-red-600 mb-4">{errorGen}</p>}
-      {webhookError && <p className="text-red-600 mb-4">{webhookError}</p>}
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-50 rounded-md">
+          <p className="text-red-600">{errorMessage}</p>
+        </div>
+      )}
 
       {/* Sección Tuto Quiroga */}
-      {(activeSection === "all" || activeSection === "tuto") && (
+      <SectionWrapper 
+        activeSection={activeSection} 
+        section="tuto"
+      >
         <NewsSection
           title="Noticias de: Tuto Quiroga"
           noticias={noticiasTuto}
@@ -109,10 +122,13 @@ export default function HomePage() {
           actualizandoEstado={actualizandoEstado}
           noNewsMessage="Hoy no hay noticias de Tuto Quiroga."
         />
-      )}
+      </SectionWrapper>
 
       {/* Sección Juan Pablo Velasco */}
-      {(activeSection === "all" || activeSection === "jp") && (
+      <SectionWrapper 
+        activeSection={activeSection} 
+        section="jp"
+      >
         <NewsSection
           title="Noticias de: Juan Pablo Velasco"
           noticias={noticiasJP}
@@ -121,10 +137,13 @@ export default function HomePage() {
           actualizandoEstado={actualizandoEstado}
           noNewsMessage="Hoy no hay noticias de Juan Pablo Velasco."
         />
-      )}
+      </SectionWrapper>
 
       {/* Sección Otras Noticias */}
-      {(activeSection === "all" || activeSection === "otros") && (
+      <SectionWrapper 
+        activeSection={activeSection} 
+        section="otros"
+      >
         <NewsSection
           title="Otras Noticias"
           noticias={noticiasOtros}
@@ -133,9 +152,17 @@ export default function HomePage() {
           actualizandoEstado={actualizandoEstado}
           noNewsMessage="No hay noticias cargadas."
         />
-      )}
+      </SectionWrapper>
 
       {showModal && <LoadingModal timer={timer} />}
     </main>
   );
+}
+
+// Componente auxiliar para manejar la lógica de secciones
+function SectionWrapper({ activeSection, section, children }) {
+  if (activeSection !== "all" && activeSection !== section) {
+    return null;
+  }
+  return children;
 }
