@@ -5,96 +5,94 @@ const prisma = new PrismaClient();
 
 export async function GET(request) {
   try {
-    // Hora actual en Bolivia
-    const nowBolivia = DateTime.now().setZone("America/La_Paz");
-    console.log("Hora actual Bolivia:", nowBolivia.toISO());
+    // 1. Configuración de zonas horarias
+    const zonaBolivia = "America/La_Paz";
+    
+    // 2. Obtener tiempos actuales
+    const ahoraUTC = DateTime.utc();
+    const ahoraBolivia = ahoraUTC.setZone(zonaBolivia);
+    
+    console.log(`[DEBUG] Hora actual UTC: ${ahoraUTC.toISO()}`);
+    console.log(`[DEBUG] Hora actual Bolivia: ${ahoraBolivia.toISO()}`);
 
-    // Mostrar últimos 10 registros sin filtro para diagnóstico
-    const ultimos10 = await prisma.news.findMany({
-      take: 10,
-      orderBy: { created_at: "desc" },
-      select: { id: true, titulo: true, created_at: true },
+    // 3. Definir el corte a las 8:30 AM Bolivia
+    const corteHoyBolivia = ahoraBolivia.set({ 
+      hour: 4, 
+      minute: 30, 
+      second: 0, 
+      millisecond: 0 
     });
-    console.log("Últimas 10 noticias (sin filtro):");
-    ultimos10.forEach(n => {
-      console.log(`- ID:${n.id}, creado_at(UTC): ${n.created_at.toISOString()}`);
-    });
+    const corteHoyUTC = corteHoyBolivia.toUTC();
+    
+    console.log(`[DEBUG] Corte hoy Bolivia: ${corteHoyBolivia.toISO()}`);
+    console.log(`[DEBUG] Corte hoy UTC: ${corteHoyUTC.toISO()}`);
 
-    // Corte a las 8:30 AM Bolivia (local), convertido a UTC para consulta
-    const corteHoyBolivia = nowBolivia.set({ hour: 8, minute: 30, second: 0, millisecond: 0 });
-
-    let inicioBolivia, finBolivia;
-    if (nowBolivia < corteHoyBolivia) {
-      inicioBolivia = corteHoyBolivia.minus({ days: 1 });
-      finBolivia = corteHoyBolivia;
+    // 4. Determinar rango de búsqueda
+    let inicioBusquedaUTC, finBusquedaUTC;
+    
+    if (ahoraBolivia >= corteHoyBolivia) {
+      // Si ya pasó 8:30 AM hoy, buscar desde 8:30 AM hoy hasta 8:30 AM mañana
+      inicioBusquedaUTC = corteHoyUTC;
+      finBusquedaUTC = corteHoyUTC.plus({ days: 1 });
     } else {
-      inicioBolivia = corteHoyBolivia;
-      finBolivia = corteHoyBolivia.plus({ days: 1 });
+      // Si aún no son las 8:30 AM hoy, buscar desde 8:30 AM de ayer hasta 8:30 AM hoy
+      inicioBusquedaUTC = corteHoyUTC.minus({ days: 1 });
+      finBusquedaUTC = corteHoyUTC;
     }
 
-    // Convertir a UTC para consulta en base de datos
-    const inicioUTC = inicioBolivia.toUTC().toJSDate();
-    const finUTC = finBolivia.toUTC().toJSDate();
+    console.log(`[DEBUG] Rango de búsqueda UTC: ${inicioBusquedaUTC.toISO()} - ${finBusquedaUTC.toISO()}`);
+    console.log(`[DEBUG] Equivalente Bolivia: ${inicioBusquedaUTC.setZone(zonaBolivia).toISO()} - ${finBusquedaUTC.setZone(zonaBolivia).toISO()}`);
 
-    console.log("Rango consulta en Bolivia:", inicioBolivia.toISO(), "a", finBolivia.toISO());
-    console.log("Rango consulta en UTC:", inicioUTC.toISOString(), "a", finUTC.toISOString());
-
-    // Buscar noticias en rango UTC
-    let noticias = await prisma.news.findMany({
+    // 5. Consulta a la base de datos
+    const noticias = await prisma.news.findMany({
       where: {
         created_at: {
-          gte: inicioUTC,
-          lt: finUTC,
-        },
+          gte: inicioBusquedaUTC.toJSDate(),
+          lt: finBusquedaUTC.toJSDate() // Usamos lt (menor que) en lugar de lte (menor o igual)
+        }
       },
-      orderBy: { created_at: "desc" },
+      orderBy: { created_at: "desc" }
     });
 
-    console.log(`Noticias encontradas en rango corte: ${noticias.length}`);
-    noticias.forEach(noticia => {
-      const fechaBolivia = DateTime.fromJSDate(noticia.created_at).setZone("America/La_Paz");
-      console.log(`- ID: ${noticia.id}, Creado Bolivia: ${fechaBolivia.toFormat("dd/MM/yyyy HH:mm")}`);
+    // 6. Transformar las fechas para el frontend
+    const noticiasConFechaFormateada = noticias.map(noticia => {
+      const fechaUTC = DateTime.fromJSDate(noticia.created_at).toUTC();
+      const fechaBolivia = fechaUTC.setZone(zonaBolivia);
+      
+      return {
+        ...noticia,
+        created_at: fechaBolivia.toISO(),
+        created_at_bolivia: fechaBolivia.toFormat("dd/MM/yyyy HH:mm:ss"),
+        created_at_utc: fechaUTC.toISO()
+      };
     });
 
-    // Si no hay noticias, fallback desde medianoche Bolivia UTC hasta ahora UTC
-    if (noticias.length === 0) {
-      const inicioDiaBolivia = nowBolivia.startOf("day").toUTC().toJSDate();
-      const ahoraUTC = DateTime.utc().toJSDate();
+    console.log(`[DEBUG] Noticias encontradas: ${noticiasConFechaFormateada.length}`);
+    noticiasConFechaFormateada.forEach(n => {
+      console.log(`- ID: ${n.id}, Título: ${n.titulo.substring(0, 20)}...`);
+      console.log(`  Hora Bolivia: ${n.created_at_bolivia}`);
+      console.log(`  Hora UTC: ${n.created_at_utc}`);
+    });
 
-      console.log("No hubo noticias en rango corte, buscando desde inicio día Bolivia a ahora UTC...");
-      noticias = await prisma.news.findMany({
-        where: {
-          created_at: {
-            gte: inicioDiaBolivia,
-            lte: ahoraUTC,
-          },
-        },
-        orderBy: { created_at: "desc" },
-      });
+    // 7. Enviar respuesta con cabeceras que eviten caché
+    const headers = {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, max-age=0",
+      "Pragma": "no-cache"
+    };
 
-      console.log(`Noticias encontradas fallback: ${noticias.length}`);
-    }
-
-    // Si sigue vacío, devolver últimas 10 sin filtro
-    if (noticias.length === 0) {
-      const ultimasNoticias = await prisma.news.findMany({
-        take: 10,
-        orderBy: { created_at: "desc" },
-        select: { id: true, titulo: true, created_at: true, categoria: true },
-      });
-
-      noticias = ultimasNoticias;
-      console.log(`Noticias últimas 10 sin filtro: ${noticias.length}`);
-    }
-
-    return new Response(JSON.stringify(noticias), {
+    return new Response(JSON.stringify(noticiasConFechaFormateada), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers
     });
   } catch (error) {
-    console.error("Error en GET /api/noticias:", error);
+    console.error("[ERROR] En GET /api/noticias:", error);
     return new Response(
-      JSON.stringify({ error: "Error al obtener noticias", details: error.message }),
+      JSON.stringify({ 
+        error: "Error al obtener noticias", 
+        details: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

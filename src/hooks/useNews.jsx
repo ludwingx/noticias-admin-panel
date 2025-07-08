@@ -149,44 +149,32 @@ export function useNews() {
       setEjecutandoWebhook(false);
     }
   }
-
   async function manejarEstado(id, nuevoEstado) {
+    // Aplica el cambio local optimista
+    setNoticias((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, estado: nuevoEstado.toUpperCase() } : n
+      )
+    );
+  
     setActualizandoEstado((prev) => ({ ...prev, [id]: true }));
-
+  
     try {
       const res = await fetch("/api/noticias", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, estado: nuevoEstado.toUpperCase() }),
       });
-
+  
       if (!res.ok) throw new Error("Error al actualizar estado");
-
       await res.json();
-
-      // NO mostrar modal en esta espera
-      await esperarCambioNoticias(
-        (nuevasNoticias) => {
-          const noticiaActualizada = nuevasNoticias.find((n) => n.id === id);
-          return (
-            noticiaActualizada &&
-            noticiaActualizada.estado?.toLowerCase() === nuevoEstado.toLowerCase()
-          );
-        },
-        3,
-        false // <--- Aquí está la clave para NO mostrar modal al aprobar/rechazar
-      );
-    } catch {
+    } catch (err) {
       alert("No se pudo actualizar el estado de la noticia.");
-      setWaiting(false);
-      setShowModal(false);
-      setIntentosSinNoticias(0);
-      setNoNews(false);
     } finally {
       setActualizandoEstado((prev) => ({ ...prev, [id]: false }));
     }
   }
-
+  
   function getTiempoRestanteHasta830amSiguiente() {
     const ahora = new Date();
     const ahoraBolivia = new Date(
