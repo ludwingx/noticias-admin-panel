@@ -123,7 +123,8 @@ export function useNews() {
     setWebhookError(null);
     try {
       const res = await fetch(
-        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook-test/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
+        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
+        
         { method: "POST" }
       );
       if (!res.ok) throw new Error("Error al ejecutar el webhook");
