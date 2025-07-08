@@ -134,7 +134,7 @@ export function useNews() {
   
     try {
       const res = await fetch(
-        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook-test/842aea7e-c1a2-48f2-b681-17aa61268ac5",
+        "https://n8n-torta-express.qnfmlx.easypanel.host/webhook/44ccd0ac-cab7-45f8-aa48-317e9400ca2d",
         { method: "POST" }
       );
       if (!res.ok) throw new Error("Error al ejecutar el webhook");
