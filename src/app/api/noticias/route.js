@@ -12,43 +12,39 @@ export async function GET(request) {
     const ahoraUTC = DateTime.utc();
     const ahoraBolivia = ahoraUTC.setZone(zonaBolivia);
     
-    console.log(`[DEBUG] Hora actual UTC: ${ahoraUTC.toISO()}`);
-    console.log(`[DEBUG] Hora actual Bolivia: ${ahoraBolivia.toISO()}`);
+    console.log(`[DEBUG] Hora actual Bolivia: ${ahoraBolivia.toFormat("dd/MM/yyyy HH:mm:ss")}`);
 
-    // 3. Definir el corte a las 8:30 AM Bolivia
+    // 3. Definir el corte diario a las 8:30 AM Bolivia
     const corteHoyBolivia = ahoraBolivia.set({ 
-      hour: 4, 
+      hour: 8, 
       minute: 30, 
       second: 0, 
       millisecond: 0 
     });
-    const corteHoyUTC = corteHoyBolivia.toUTC();
-    
-    console.log(`[DEBUG] Corte hoy Bolivia: ${corteHoyBolivia.toISO()}`);
-    console.log(`[DEBUG] Corte hoy UTC: ${corteHoyUTC.toISO()}`);
 
-    // 4. Determinar rango de búsqueda
+    // 4. Determinar el rango de búsqueda
     let inicioBusquedaUTC, finBusquedaUTC;
-    
-    if (ahoraBolivia >= corteHoyBolivia) {
-      // Si ya pasó 8:30 AM hoy, buscar desde 8:30 AM hoy hasta 8:30 AM mañana
-      inicioBusquedaUTC = corteHoyUTC;
-      finBusquedaUTC = corteHoyUTC.plus({ days: 1 });
+
+    if (ahoraBolivia < corteHoyBolivia) {
+      // Si es antes de 8:30 AM hoy, mostrar desde 8:30 AM de ayer
+      inicioBusquedaUTC = corteHoyBolivia.minus({ days: 1 }).toUTC();
+      finBusquedaUTC = corteHoyBolivia.toUTC();
     } else {
-      // Si aún no son las 8:30 AM hoy, buscar desde 8:30 AM de ayer hasta 8:30 AM hoy
-      inicioBusquedaUTC = corteHoyUTC.minus({ days: 1 });
-      finBusquedaUTC = corteHoyUTC;
+      // Si es después de 8:30 AM hoy, mostrar desde 8:30 AM hoy
+      inicioBusquedaUTC = corteHoyBolivia.toUTC();
+      finBusquedaUTC = corteHoyBolivia.plus({ days: 1 }).toUTC();
     }
 
-    console.log(`[DEBUG] Rango de búsqueda UTC: ${inicioBusquedaUTC.toISO()} - ${finBusquedaUTC.toISO()}`);
-    console.log(`[DEBUG] Equivalente Bolivia: ${inicioBusquedaUTC.setZone(zonaBolivia).toISO()} - ${finBusquedaUTC.setZone(zonaBolivia).toISO()}`);
+    console.log(`[DEBUG] Rango de búsqueda:`);
+    console.log(`- UTC: ${inicioBusquedaUTC.toFormat("dd/MM/yyyy HH:mm:ss")} - ${finBusquedaUTC.toFormat("dd/MM/yyyy HH:mm:ss")}`);
+    console.log(`- Bolivia: ${inicioBusquedaUTC.setZone(zonaBolivia).toFormat("dd/MM/yyyy HH:mm:ss")} - ${finBusquedaUTC.setZone(zonaBolivia).toFormat("dd/MM/yyyy HH:mm:ss")}`);
 
     // 5. Consulta a la base de datos
     const noticias = await prisma.news.findMany({
       where: {
         created_at: {
           gte: inicioBusquedaUTC.toJSDate(),
-          lt: finBusquedaUTC.toJSDate() // Usamos lt (menor que) en lugar de lte (menor o igual)
+          lt: finBusquedaUTC.toJSDate()
         }
       },
       orderBy: { created_at: "desc" }
@@ -62,42 +58,33 @@ export async function GET(request) {
       return {
         ...noticia,
         created_at: fechaBolivia.toISO(),
-        created_at_bolivia: fechaBolivia.toFormat("dd/MM/yyyy HH:mm:ss"),
-        created_at_utc: fechaUTC.toISO()
+        fecha_bolivia: fechaBolivia.toFormat("dd/MM/yyyy HH:mm:ss"),
+        fecha_utc: fechaUTC.toFormat("dd/MM/yyyy HH:mm:ss")
       };
     });
 
     console.log(`[DEBUG] Noticias encontradas: ${noticiasConFechaFormateada.length}`);
-    noticiasConFechaFormateada.forEach(n => {
-      console.log(`- ID: ${n.id}, Título: ${n.titulo.substring(0, 20)}...`);
-      console.log(`  Hora Bolivia: ${n.created_at_bolivia}`);
-      console.log(`  Hora UTC: ${n.created_at_utc}`);
-    });
-
-    // 7. Enviar respuesta con cabeceras que eviten caché
-    const headers = {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store, max-age=0",
-      "Pragma": "no-cache"
-    };
-
+    
+    // 7. Enviar respuesta
     return new Response(JSON.stringify(noticiasConFechaFormateada), {
       status: 200,
-      headers
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, max-age=0"
+      }
     });
+
   } catch (error) {
     console.error("[ERROR] En GET /api/noticias:", error);
     return new Response(
       JSON.stringify({ 
         error: "Error al obtener noticias", 
-        details: error.message,
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+        details: error.message 
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500 }
     );
   }
 }
-
 // PUT permanece igual
 export async function PUT(request) {
   try {
