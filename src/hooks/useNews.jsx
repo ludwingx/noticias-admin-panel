@@ -39,6 +39,7 @@ export function useNews() {
   }, []);
 
   useEffect(() => {
+    let interval;
     async function fetchNoticias() {
       const res = await fetch("/api/noticias");
       let data = await res.json();
@@ -47,6 +48,8 @@ export function useNews() {
       setLoading(false);
     }
     fetchNoticias();
+    interval = setInterval(fetchNoticias, 20000); // 20 segundos
+    return () => clearInterval(interval);
   }, []);
 
   // Efecto para el contador de recarga

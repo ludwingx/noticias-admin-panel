@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NewsSection from "@/components/NewsSection";
 import ActionButtons from "@/components/ActionButtons";
 import Filters from "@/components/Filters";
@@ -38,6 +38,54 @@ export default function HomePage() {
 
   // Estado para manejar errores combinados
   const errorMessage = errorGen || webhookError;
+
+  // Banner de extracción/filtrado de noticias
+  const [mensajeExtraccion, setMensajeExtraccion] = useState("");
+
+  // Calcula la diferencia de tiempo con la última noticia extraída hoy
+  useEffect(() => {
+    if (!hayNoticias) {
+      setMensajeExtraccion("");
+      return;
+    }
+    // Obtener la noticia más reciente (fecha_publicacion)
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    // Filtrar solo noticias de hoy
+    const noticiasHoy = noticias.filter(n => {
+      const fecha = n.created_at ? new Date(n.created_at) : null;
+      if (!fecha) return false;
+      return fecha >= hoy;
+    });
+    if (noticiasHoy.length === 0) {
+      setMensajeExtraccion("");
+      return;
+    }
+    // Encontrar la más reciente
+    const ultima = noticiasHoy.reduce((a, b) => {
+      const fechaA = a.created_at ? new Date(a.created_at) : new Date(0);
+      const fechaB = b.created_at ? new Date(b.created_at) : new Date(0);
+      return fechaA > fechaB ? a : b;
+    });
+    const fechaUltima = ultima.created_at ? new Date(ultima.created_at) : null;
+    if (!fechaUltima) {
+      setMensajeExtraccion("");
+      return;
+    }
+    function actualizarMensaje() {
+      const ahora = new Date();
+      const diffMs = ahora - fechaUltima;
+      const diffMin = diffMs / 1000 / 60;
+      if (diffMin < 3) {
+        setMensajeExtraccion("Extrayendo y filtrando noticias, espere un momento");
+      } else {
+        setMensajeExtraccion("Se completó la extracción de noticias por hoy");
+      }
+    }
+    actualizarMensaje();
+    const interval = setInterval(actualizarMensaje, 10000); // Actualiza cada 10s
+    return () => clearInterval(interval);
+  }, [noticias, hayNoticias]);
 
   if (loading) {
     return (
@@ -85,6 +133,13 @@ export default function HomePage() {
 
   return (
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 bg-white">
+      {/* Banner extracción/filtrado */}
+      {hayNoticias && mensajeExtraccion && (
+        <div className={`mb-6 px-4 py-3 rounded-md text-center font-semibold ${mensajeExtraccion.includes('completó') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-800 border border-yellow-200'}`}>
+          {mensajeExtraccion}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold">Noticias recientes</h1>
         

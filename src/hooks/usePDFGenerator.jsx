@@ -52,51 +52,20 @@ export function usePDFGenerator(noticias) {
  
        // Cargar imágenes de cabecera desde URLs
        const [logoIzquierda, logoCentro] = await Promise.all([
-         getBase64ImageFromUrl(
-           "https://i.postimg.cc/rFJtBVqs/Proyecto-nuevo-3.png"
-         ),
-         getBase64ImageFromUrl(
-           "https://i.postimg.cc/MZDMg3pY/Proyecto-nuevo-1.png"
-         ),
-       ]);
- 
-       // Altura máxima para la cabecera
-       const headerHeight = 35;
- 
-       // Agregar logo izquierdo
-       if (logoIzquierda) {
-         doc.addImage(
-           logoIzquierda,
-           "PNG",
-           margin,
-           y,
-           100, // ancho
-           headerHeight // alto
-         );
-       }
- 
-       // Agregar logo central
-       if (logoCentro) {
-         const centerImgWidth = 110;
-         const ajusteManual = -10; // mueve hacia la izquierda si está muy a la derecha, o pon -5 si está a la izquierda
-         doc.addImage(
-           logoCentro,
-           "PNG",
-           pageWidth / 2 - centerImgWidth / 2 + ajusteManual,
-           y,
-           centerImgWidth,
-           headerHeight
-         );
-       }
- 
-       y += headerHeight + 30; // Espacio después de la cabecera
- 
-       // Fecha y hora
-       const fechaHora = new Date().toLocaleString("es-ES", {
-         dateStyle: "full",
-         timeStyle: "short",
-       });
- 
+        getBase64ImageFromUrl(
+          "https://i.postimg.cc/rFJtBVqs/Proyecto-nuevo-3.png"
+        ),
+        getBase64ImageFromUrl(
+          "https://i.postimg.cc/MZDMg3pY/Proyecto-nuevo-1.png"
+        )
+      ]);
+      
+      // When you need to use date formatting:
+      const fechaHora = new Date().toLocaleString("es-ES", {
+        dateStyle: "full",
+        timeStyle: "short",
+      });
+       
        doc.setFont("helvetica", "bold");
        doc.setFontSize(20);
        doc.setTextColor("#000000");
@@ -142,7 +111,7 @@ export function usePDFGenerator(noticias) {
  
          if (noticia.imagen) {
            const imgData = await getBase64ImageFromUrl(noticia.imagen);
-           if (imgData) {
+           if (imgData && imgData.startsWith("data:image/png")) {
              const maxImgWidth = boxWidth - padding * 2;
              const imgObj = document.createElement("img");
              imgObj.src = imgData;
@@ -173,6 +142,8 @@ export function usePDFGenerator(noticias) {
                imgHeight
              );
              cursorY += imgHeight + 10;
+           } else if (noticia.imagen) {
+             console.warn("Imagen no válida o corrupta, se omite en el PDF:", noticia.imagen);
            }
          }
  
@@ -247,64 +218,6 @@ export function usePDFGenerator(noticias) {
  
            doc.setFont("helvetica", "bold");
            doc.setFontSize(13);
-           doc.setTextColor("#12358d");
-           const titleLines = doc.splitTextToSize(
-             noticia.titulo,
-             boxWidth - padding * 2
-           );
-           doc.text(titleLines, margin + padding, cursorY);
-           cursorY += titleLines.length * 18;
- 
-           if (noticia.imagen) {
-             const imgData = await getBase64ImageFromUrl(noticia.imagen);
-             if (imgData) {
-               const maxImgWidth = boxWidth - padding * 2;
-               const imgObj = document.createElement("img");
-               imgObj.src = imgData;
-               await new Promise((r) => (imgObj.onload = r));
-               const ratio = imgObj.naturalHeight / imgObj.naturalWidth;
-               let imgWidth = maxImgWidth;
-               let imgHeight = imgWidth * ratio;
-               if (imgHeight > 120) {
-                 imgHeight = 120;
-                 imgWidth = imgHeight / ratio;
-               }
-               doc.setFillColor("#fff");
-               doc.roundedRect(
-                 margin + padding - 2,
-                 cursorY - 2,
-                 imgWidth + 4,
-                 imgHeight + 4,
-                 4,
-                 4,
-                 "F"
-               );
-               doc.addImage(
-                 imgData,
-                 "PNG",
-                 margin + padding,
-                 cursorY,
-                 imgWidth,
-                 imgHeight
-               );
-               cursorY += imgHeight + 10;
-             }
-           }
- 
-           doc.setFont("helvetica", "italic");
-           doc.setFontSize(11);
-           doc.setTextColor("#000000");
-           const resumenMostrar = noticia.resumen_ia || noticia.resumen || "";
-           const resumenLines = doc.splitTextToSize(
-             resumenMostrar,
-             boxWidth - padding * 2
-           );
-           doc.text(resumenLines, margin + padding, cursorY);
-           cursorY += resumenLines.length * 16;
- 
-           doc.setFont("helvetica", "normal");
-           doc.setFontSize(11);
-           doc.setTextColor("#da0b0a");
            doc.textWithLink("Leer más", margin + padding, cursorY, {
              url: noticia.url || "#",
            });

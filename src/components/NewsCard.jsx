@@ -21,6 +21,7 @@ export default function NewsCard({ noticia, manejarEstado, estaActualizando }) {
             fill
             className="object-cover"
             unoptimized
+            priority 
           />
         </div>
       )}

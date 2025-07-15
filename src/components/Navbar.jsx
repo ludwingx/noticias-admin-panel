@@ -18,6 +18,7 @@ export default async function Navbar() {
             alt="Tuto Logo"
             width={140}
             height={40}
+            priority 
           />
         </Link>
 
