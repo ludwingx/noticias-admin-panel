@@ -79,7 +79,7 @@ export default function HomePage() {
       if (diffMin < 3) {
         setMensajeExtraccion("Extrayendo y filtrando noticias, espere un momento");
       } else {
-        setMensajeExtraccion("Se completó la extracción de noticias por hoy");
+        setMensajeExtraccion("Ya se han extraído y filtrado las noticias para hoy");
       }
     }
     actualizarMensaje();
@@ -133,12 +133,7 @@ export default function HomePage() {
 
   return (
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 bg-white">
-      {/* Banner extracción/filtrado */}
-      {hayNoticias && mensajeExtraccion && (
-        <div className={`mb-6 px-4 py-3 rounded-md text-center font-semibold ${mensajeExtraccion.includes('completó') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-800 border border-yellow-200'}`}>
-          {mensajeExtraccion}
-        </div>
-      )}
+
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold">Noticias recientes</h1>
@@ -164,7 +159,16 @@ export default function HomePage() {
           <p className="text-red-600">{errorMessage}</p>
         </div>
       )}
-
+      {/* Banner extracción/filtrado */}
+      {hayNoticias && mensajeExtraccion && (
+        <div className={`mb-6 px-4 py-3 rounded-md text-center font-semibold ${
+  mensajeExtraccion.includes('completó') || mensajeExtraccion.includes('extraído')
+    ? 'bg-green-50 text-green-700 border border-green-200'
+    : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+}`}>
+  {mensajeExtraccion}
+</div>
+      )}
       {/* Sección Tuto Quiroga */}
       <SectionWrapper 
         activeSection={activeSection} 
