@@ -41,7 +41,8 @@ export default function ActionButtons({
           ? `Disponible en ${contador.horas.toString().padStart(2, "0")}:${
               contador.minutos.toString().padStart(2, "0")
             }:${contador.segundos.toString().padStart(2, "0")}`
-          : "Cargar Noticias"}
+           
+          : "Procesar Noticias 🤖"}
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 export function useNews() {
+  const [articulosBrutos, setArticulosBrutos] = useState([]);
   const [noticias, setNoticias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ejecutandoWebhook, setEjecutandoWebhook] = useState(false);
@@ -47,8 +48,22 @@ export function useNews() {
       setNoticias(data);
       setLoading(false);
     }
+    async function fetchArticulosBrutos() {
+      try {
+        const res = await fetch("/api/articulos-brutos");
+        let data = await res.json();
+        if (!Array.isArray(data)) data = [];
+        setArticulosBrutos(data);
+      } catch (e) {
+        setArticulosBrutos([]);
+      }
+    }
     fetchNoticias();
-    interval = setInterval(fetchNoticias, 20000); // 20 segundos
+    fetchArticulosBrutos();
+    interval = setInterval(() => {
+      fetchNoticias();
+      fetchArticulosBrutos();
+    }, 20000); // 20 segundos
     return () => clearInterval(interval);
   }, []);
 
@@ -201,6 +216,7 @@ export function useNews() {
 
   return {
     noticias,
+    articulosBrutos,
     loading,
     noticiasTuto,
     noticiasJP,

@@ -30,6 +30,7 @@ export default function HomePage() {
     contador,
     horaLocal,
     hayNoticias,
+    articulosBrutos, // <-- nuevo
   } = useNews();
 
   const { generarBoletin, generando, errorGen } = usePDFGenerator(noticias);
@@ -44,14 +45,27 @@ export default function HomePage() {
 
   // Calcula la diferencia de tiempo con la última noticia extraída hoy
   useEffect(() => {
+    // 1. Prioridad: ArticulosBrutos recientes (<2 min)
+    if (articulosBrutos && articulosBrutos.length > 0) {
+      const ahora = new Date();
+      const ultimo = articulosBrutos.reduce((a, b) =>
+        new Date(a.creado) > new Date(b.creado) ? a : b
+      );
+      const creado = new Date(ultimo.creado);
+      const diffMin = (ahora - creado) / 1000 / 60;
+      if (diffMin < 2) {
+        setMensajeExtraccion("Extrayendo y filtrando noticias, espere unos minutos");
+        return;
+      }
+    }
+
+    // 2. Si no hay ArticulosBrutos recientes, usa la lógica de News
     if (!hayNoticias) {
       setMensajeExtraccion("");
       return;
     }
-    // Obtener la noticia más reciente (fecha_publicacion)
     const hoy = new Date();
-    hoy.setHours(0,0,0,0);
-    // Filtrar solo noticias de hoy
+    hoy.setHours(0, 0, 0, 0);
     const noticiasHoy = noticias.filter(n => {
       const fecha = n.created_at ? new Date(n.created_at) : null;
       if (!fecha) return false;
@@ -61,7 +75,6 @@ export default function HomePage() {
       setMensajeExtraccion("");
       return;
     }
-    // Encontrar la más reciente
     const ultima = noticiasHoy.reduce((a, b) => {
       const fechaA = a.created_at ? new Date(a.created_at) : new Date(0);
       const fechaB = b.created_at ? new Date(b.created_at) : new Date(0);
@@ -77,7 +90,7 @@ export default function HomePage() {
       const diffMs = ahora - fechaUltima;
       const diffMin = diffMs / 1000 / 60;
       if (diffMin < 3) {
-        setMensajeExtraccion("Extrayendo y filtrando noticias, espere un momento");
+        setMensajeExtraccion("Las últimas noticias relevantes ya están siendo procesadas y se visualizarán pronto en pantalla.");
       } else {
         setMensajeExtraccion("Ya se han extraído y filtrado las noticias para hoy");
       }
@@ -85,7 +98,7 @@ export default function HomePage() {
     actualizarMensaje();
     const interval = setInterval(actualizarMensaje, 10000); // Actualiza cada 10s
     return () => clearInterval(interval);
-  }, [noticias, hayNoticias]);
+  }, [articulosBrutos, noticias, hayNoticias]);
 
   if (loading) {
     return (
@@ -98,10 +111,10 @@ export default function HomePage() {
   if (!loading && noticias.length === 0) {
     return (
       <main className="min-h-[70vh] flex flex-col justify-center items-center px-4 py-10 bg-white max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Noticias recientes</h1>
-        <p className="text-gray-500 text-lg mb-6">
-          No hay noticias disponibles.
-        </p>
+        <h1 className="text-3xl font-bold mb-6">¡Bienvenido! Aún no se procesaron noticias hoy</h1>
+        <span className="text-gray-500 text-lg mb-6 text-center font-semibold max-w-xl">
+        Podés comenzar buscando, extrayendo, filtrando y generando resúmenes con IA haciendo clic aquí abajo. 🚀
+        </span>
         
         <ActionButtons
           ejecutarWebhook={ejecutarWebhook}
@@ -112,7 +125,6 @@ export default function HomePage() {
           contador={contador}
         />
         
-        <p className="text-gray-400 mt-2 text-sm">Hora local: {horaLocal}</p>
         
         {hayNoticias && contador !== null && (
           <p className="text-yellow-600 mt-4 text-center">
