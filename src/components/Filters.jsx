@@ -1,6 +1,6 @@
 export default function Filters({ activeSection, setActiveSection }) {
   return (
-    <div className="flex items-center gap-2 mb-6">
+    <div className="flex items-center">
       <span className="text-gray-600 text-sm font-medium">Filtrar por:</span>
       <select
         value={activeSection}

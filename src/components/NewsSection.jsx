@@ -12,7 +12,7 @@ export default function NewsSection({
     <div className="mb-8">
       <h2 className={`text-xl font-bold mb-4 ${colorClass}`}>{title}</h2>
       {noticias.length > 0 ? (
-        <div className="grid gap-6">
+        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2">
           {noticias.map((noticia) => (
             <NewsCard
               key={noticia.id}
